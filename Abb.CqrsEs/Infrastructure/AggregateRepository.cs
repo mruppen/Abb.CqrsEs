@@ -55,7 +55,7 @@ namespace Abb.CqrsEs.Infrastructure
                     await aggregate.CommitChanges(token);
                     return;
                 }
-                await _eventStore.SaveAndPublish(eventStream, c => aggregate.CommitChanges(c), token);
+                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), token);
             }
             catch (InvalidOperationException)
             {

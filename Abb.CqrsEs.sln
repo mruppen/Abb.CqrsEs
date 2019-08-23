@@ -3,9 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28621.142
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abb.CqrsEs", "Abb.CqrsEs\Abb.CqrsEs.csproj", "{8EE8B3CD-5922-4A8F-9E25-566BA9D41C2A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs", "Abb.CqrsEs\Abb.CqrsEs.csproj", "{8EE8B3CD-5922-4A8F-9E25-566BA9D41C2A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abb.CqrsEs.UnitTests", "Abb.CqrsEs.UnitTests\Abb.CqrsEs.UnitTests.csproj", "{FD992BFC-1B37-4381-8BDD-233FB46CE774}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.UnitTests", "Abb.CqrsEs.UnitTests\Abb.CqrsEs.UnitTests.csproj", "{FD992BFC-1B37-4381-8BDD-233FB46CE774}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9D6E3D57-2D5A-466D-92A3-6ADB18FFD6DB}"
+	ProjectSection(SolutionItems) = preProject
+		azure-pipelines.yml = azure-pipelines.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

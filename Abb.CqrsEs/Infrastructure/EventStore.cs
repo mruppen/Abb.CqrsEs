@@ -1,43 +1,31 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace Abb.CqrsEs.Infrastructure
 {
     public class EventStore : IDisposable, IEventStore
     {
-        private readonly BufferBlock<PublishingEventStream> _publisherQueue = new BufferBlock<PublishingEventStream>();
-
-        private event EventHandler<PublishingEventStream> OnSaved;
-
-        private readonly bool _useBufferBlock;
-
-        private readonly IEventDispatcher _dispatcher;
         private readonly IEventPublisher _publisher;
         private readonly IEventPersistence _persistence;
+        private readonly IEventCache _eventCache;
         private readonly ILogger _logger;
-        private readonly IDisposable _subscriber;
+        private readonly ConcurrentDictionary<Guid, AggregateEventStream> _emittingEvents = new ConcurrentDictionary<Guid, AggregateEventStream>();
         private bool _disposed = false;
 
-        public EventStore(IEventDispatcher eventDispatcher, IEventPublisher eventPublisher, IEventPersistence eventPersistence, ILogger<EventStore> logger, bool useBufferBlock = true)
+        public EventStore(IEventPublisher eventPublisher, IEventPersistence eventPersistence, IEventCache eventCache, ILogger<EventStore> logger)
         {
-            _dispatcher = eventDispatcher ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventDispatcher));
             _publisher = eventPublisher ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventPublisher));
             _persistence = eventPersistence ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventPersistence));
+            _eventCache = eventCache ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventCache));
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
-            _useBufferBlock = useBufferBlock;
 
-            var observable = GetObservable();
-            _subscriber = GetSubscription(observable);
-
-            InsertInitialEventStreams();
+            InsertPendingEvents().GetAwaiter().GetResult();
         }
 
         public void Dispose()
@@ -98,28 +86,27 @@ namespace Abb.CqrsEs.Infrastructure
             }
         }
 
-        public Task SaveAndPublish(IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges = null, CancellationToken token = default)
+        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (events == null) throw new ArgumentNullException(nameof(events));
             _logger.Info(() =>
             {
-                var firstEvent = events.FirstOrDefault();
-                return $"Saving and publishing events for aggegrate with id {firstEvent?.AggregateId}";
+                return $"Saving and publishing events for aggegrate with id {aggregateId}";
             });
 
+            var eventsArray = events.ToArray();
             try
             {
-                return _persistence.Save(events, token)
-                    .Then(async savedEvents =>
+                return _persistence.Save(events, cancellationToken)
+                    .Then(async () =>
                     {
                         if (commitChanges != null)
-                            await commitChanges(token);
-                        return savedEvents;
+                            await commitChanges(cancellationToken);
                     })
-                    .Then(savedEvents =>
+                    .Then(() =>
                     {
-                        return EmitEventStream(new PublishingEventStream { Events = savedEvents }, token);
+                        return Publish(aggregateId, eventsArray, cancellationToken);
                     });
             }
             catch (InvalidOperationException) { throw; }
@@ -137,84 +124,30 @@ namespace Abb.CqrsEs.Infrastructure
         {
             if (!_disposed)
             {
-                _subscriber?.Dispose();
                 _disposed = true;
             }
         }
 
-        private IObservable<PublishingEventStream> GetObservable()
+        private async Task InsertPendingEvents()
         {
-            IObservable<PublishingEventStream> observable;
-            if (_useBufferBlock)
+            var pendingEvents = await _eventCache.GetAll();
+            foreach (var events in pendingEvents)
             {
-                observable = Observable.Create<PublishingEventStream>(async (observer, token) =>
-                {
-                    while (!token.IsCancellationRequested)
-                    {
-                        try
-                        {
-                            var nextItem = await _publisherQueue.ReceiveAsync(token);
-                            observer.OnNext(nextItem);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            _logger.Info(() => "EventStore has been disposed.");
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.Warning(() => $"Processing queue item failed.", e);
-                        }
-                    }
-
-                    observer.OnCompleted();
-                    return Disposable.Empty;
-                });
-            }
-            else
-            {
-                observable = Observable.FromEventPattern<PublishingEventStream>(h => OnSaved += h, h => OnSaved -= h)
-                                       .Select(e => e.EventArgs);
-            }
-
-            return observable.Publish()
-                             .RefCount();
-        }
-
-        private IDisposable GetSubscription(IObservable<PublishingEventStream> observable)
-        {
-            var observer = new Observer(_persistence, _dispatcher, _publisher, _logger);
-            if (_useBufferBlock)
-            {
-                return observable.ObserveOn(TaskPoolScheduler.Default).Subscribe(observer);
-            }
-            else
-            {
-                return observable.ObserveOn(new EventLoopScheduler()).Subscribe(observer);
+                await Publish(events.Key, events.ToArray(), CancellationToken.None);
             }
         }
 
-        private async Task EmitEventStream(PublishingEventStream eventStream, CancellationToken token)
+        private async Task Publish(Guid aggregateId, Event[] events, CancellationToken cancellationToken)
         {
-            if (_useBufferBlock)
-            {
-                await _publisherQueue.SendAsync(eventStream, token);
-            }
-            else
-            {
-                token.ThrowIfCancellationRequested();
-                OnSaved(this, eventStream);
-            }
-        }
 
-        private void InsertInitialEventStreams()
-        {
-            var unpublishedEvents = _persistence.GetUnpublished().GetAwaiter().GetResult();
-            EmitEventStream(new PublishingEventStream { Events = unpublishedEvents, PublishOnly = true, RetryCount = 0 }, CancellationToken.None)
-                .GetAwaiter().GetResult();
+            var aes = _emittingEvents.GetOrAdd(aggregateId,
+                _ => new AggregateEventStream(
+                    aggregateId,
+                    (@event, token) => _publisher.Publish(@event, token),
+                    @event => _eventCache.Delete(@event)));
 
-            var undispatchedEvents = _persistence.GetUndispatched().GetAwaiter().GetResult();
-            EmitEventStream(new PublishingEventStream { Events = undispatchedEvents, PublishOnly = false, RetryCount = 0 }, CancellationToken.None)
-                .GetAwaiter().GetResult();
+            await events.ForEachAsync(async @event => await _eventCache.Add(@event));
+            await aes.AddEventStream(events, cancellationToken);
         }
 
         private void ThrowIfDisposed()
@@ -229,90 +162,67 @@ namespace Abb.CqrsEs.Infrastructure
                 throw ExceptionHelper.ArgumentMustNotBeNullOrDefault(nameof(aggregateId));
         }
 
-        private class Observer : IObserver<PublishingEventStream>
+        private class AggregateEventStream
         {
-            private readonly IEventPersistence _persistence;
-            private readonly IEventDispatcher _dispatcher;
-            private readonly IEventPublisher _publisher;
-            private readonly ILogger _logger;
+            private readonly Func<Event, CancellationToken, Task> _publish;
+            private readonly Func<Event, Task> _complete;
+            private readonly AsyncLock _asyncLock = new AsyncLock();
             private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
+            private Task _processingTask = Task.CompletedTask;
 
-            public Observer(IEventPersistence persistence, IEventDispatcher dispatcher, IEventPublisher publisher, ILogger logger)
+            public AggregateEventStream(Guid aggregateId, Func<Event, CancellationToken, Task> publish, Func<Event, Task> complete)
             {
-                _persistence = persistence;
-                _dispatcher = dispatcher;
-                _publisher = publisher;
-                _logger = logger;
+                AggregateId = aggregateId;
+                _publish = publish;
+                _complete = complete;
             }
 
-            public void OnCompleted()
+            public Guid AggregateId { get; }
+
+            public async Task AddEventStream(Event[] events, CancellationToken cancellationToken)
             {
-                _tokenSource.Cancel();
+                using (await _asyncLock.Lock(cancellationToken))
+                {
+                    if (_processingTask.IsCanceled)
+                        throw new TaskCanceledException();
+
+                    if (_processingTask.IsFaulted)
+                        throw _processingTask.Exception?.Flatten() as Exception ?? new InvalidOperationException();
+
+                    if (_processingTask.IsCompleted)
+                    {
+                        _processingTask = Task.Run(async () => await PublishEventStream(events, cancellationToken));
+                    }
+                    else
+                    {
+                        _processingTask = _processingTask.ContinueWith(async t =>
+                        {
+                            t.ThrowIfFaultedOrCanceled();
+                            await PublishEventStream(events, cancellationToken);
+                        });
+                    }
+                }
             }
 
-            public void OnError(Exception error)
-            { }
-
-            public void OnNext(PublishingEventStream value)
+            private async Task PublishEventStream(Event[] events, CancellationToken cancellationToken)
             {
-                IPersistedEvent[] dispatchedEvents;
-                _logger.Debug(() => $"Processing next {nameof(PublishingEventStream)} instance.");
-                if (value.PublishOnly)
-                {
-                    dispatchedEvents = value.Events;
-                }
-                else
-                {
-                    try
-                    {
-                        dispatchedEvents = Dispatch(value.Events, _tokenSource.Token);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.Warning(() => $"Dispatching of events failed.", e);
-                        return;
-                    }
-                }
+                if (_tokenSource.IsCancellationRequested)
+                    throw new TaskCanceledException();
 
+                var registration = cancellationToken.Register(() => _tokenSource.Cancel());
                 try
                 {
-                    var publishedEvents = Publish(dispatchedEvents, _tokenSource.Token);
+                    foreach (var @event in events)
+                    {
+                        await _publish(@event, _tokenSource.Token);
+                        await _complete(@event);
+                    }
                 }
-                catch (Exception e)
+                finally
                 {
-                    _logger.Warning(() => $"Publishing of events failed.", e);
-                    return;
+                    registration.Dispose();
                 }
             }
-
-            private IPersistedEvent[] Dispatch(IPersistedEvent[] persistedEvents, CancellationToken token)
-            {
-                persistedEvents?.ForEach(e =>
-                {
-                    _logger.Debug(() => $"Dispatch event with type {e.Event.GetType().Name} and version {e.Event.Version} for aggregate {e.Event.AggregateId}.");
-                    _dispatcher.Dispatch(e.Event, cancellationToken => _persistence.SetDispatched(e, cancellationToken), token).GetAwaiter().GetResult();
-                });
-                return persistedEvents;
-            }
-
-            private IPersistedEvent[] Publish(IPersistedEvent[] persistedEvents, CancellationToken token)
-            {
-                persistedEvents?.ForEach(e =>
-                {
-                    _logger.Debug(() => $"Publish event with type {e.Event.GetType().Name} and version {e.Event.Version} for aggregate {e.Event.AggregateId}.");
-                    _publisher.Publish(e.Event, cancellationToken => _persistence.SetPublished(e, cancellationToken), token).GetAwaiter().GetResult();
-                });
-                return persistedEvents;
-            }
-        }
-
-        private struct PublishingEventStream
-        {
-            public int RetryCount { get; set; }
-
-            public IPersistedEvent[] Events { get; set; }
-
-            public bool PublishOnly { get; set; }
         }
     }
 }

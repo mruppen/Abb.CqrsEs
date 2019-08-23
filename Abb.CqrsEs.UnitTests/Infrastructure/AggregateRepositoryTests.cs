@@ -157,12 +157,12 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
         {
             public IList<Event> Events { get; } = new List<Event>();
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, CancellationToken token = default(CancellationToken))
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, CancellationToken token = default)
             {
                 return GetEvents(aggregateId, -1, token);
             }
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, CancellationToken token = default(CancellationToken))
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, CancellationToken token = default)
             {
                 return Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
                               .OrderBy(e => e.Version)
@@ -170,7 +170,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
                               .AsTask();
             }
 
-            public async Task<int> GetVersion(Guid aggregateId, CancellationToken token = default(CancellationToken))
+            public async Task<int> GetVersion(Guid aggregateId, CancellationToken token = default)
             {
                 var lastEvent = (await GetEvents(aggregateId)).LastOrDefault();
                 return lastEvent != null
@@ -178,7 +178,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
                     : 0;
             }
 
-            public Task SaveAndPublish(IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish = null, CancellationToken token = default(CancellationToken))
+            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish = null, CancellationToken token = default)
             {
                 foreach (var @event in events)
                 {

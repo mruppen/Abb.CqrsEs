@@ -20,65 +20,54 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             _testOutputHelper = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_save_and_publish_handles_all_events(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_save_and_publish_handles_all_events()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
 
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new Event[] { new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId) };
-            await eventStore.SaveAndPublish(events);
+            await eventStore.SaveAndPublish(aggregateId, events);
             await Task.Delay(100);
             eventStore.Dispose();
 
-            Assert.Equal(events.Length, dispatcher.DispatchedEvents.Count);
             Assert.Equal(events.Length, publisher.PublishedEvents.Count);
             Assert.Equal(events.Length, persistence.PersistedEvents.Length);
-            Assert.All(persistence.PersistedEvents, e => { if (e.State != PersistedEventImpl.EventState.Published) throw new Exception(); });
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_save_and_publish_publish_fails(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_save_and_publish_publish_fails()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
 
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new Event[] { new Event1(correlationId, 1, aggregateId), new EventFailingToPublish(correlationId, 2, aggregateId) };
 
-            await eventStore.SaveAndPublish(events);
+            await eventStore.SaveAndPublish(aggregateId, events);
             await Task.Delay(150);
 
             eventStore.Dispose();
 
-            Assert.Equal(events.Length, dispatcher.DispatchedEvents.Count);
             Assert.Equal(1, publisher.PublishedEvents.Count);
             Assert.Equal(events.Length, persistence.PersistedEvents.Length);
-            Assert.Equal(PersistedEventImpl.EventState.Published, persistence.PersistedEvents[0].State);
-            Assert.Equal(PersistedEventImpl.EventState.Dispatched, persistence.PersistedEvents[1].State);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_get_events_returns_saved_and_higher_state_events_only(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_get_events_returns_saved_and_higher_state_events_only()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
@@ -86,14 +75,12 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new[] { new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId) };
-            var persistedEvents = events.Select(e => new PersistedEventImpl(e) { State = PersistedEventImpl.EventState.Published }).ToList();
-            persistedEvents.Add(new PersistedEventImpl(new Event1(correlationId, 3, aggregateId)) { State = PersistedEventImpl.EventState.Idle });
 
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
-            var persistence = new EventPersistence(persistedEvents);
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var persistence = new EventPersistence(events);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
 
             var retrievedEvents = await eventStore.GetEvents(aggregateId);
 
@@ -101,28 +88,24 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             Assert.Equal(events.Length, retrievedEvents.Count());
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_get_events_returns_empty_enumerable_for_unknown_id(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_get_events_returns_empty_enumerable_for_unknown_id()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
 
             var retrievedEvents = await eventStore.GetEvents(Guid.NewGuid());
 
             Assert.False(retrievedEvents.Any());
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_get_version_returns_correct_value(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_get_version_returns_correct_value()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
@@ -130,65 +113,55 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new[] { new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId) };
-            var persistedEvents = events.Select(e => new PersistedEventImpl(e) { State = PersistedEventImpl.EventState.Published }).ToList();
-            persistedEvents.Add(new PersistedEventImpl(new Event1(correlationId, 3, aggregateId)) { State = PersistedEventImpl.EventState.Idle });
 
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
-            var persistence = new EventPersistence(persistedEvents);
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var persistence = new EventPersistence(events);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
             var version = await eventStore.GetVersion(aggregateId);
             eventStore.Dispose();
             Assert.Equal(2, version);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_get_version_returns_default_for_unknown_id(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_get_version_returns_default_for_unknown_id()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var dispatcher = new SimpleEventDispatcher();
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var cache = new SimpleEventCache();
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
 
             var version = await eventStore.GetVersion(Guid.NewGuid());
 
             Assert.Equal(AggregateRoot.InitialVersion, version);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task EventStore_dispatches_and_publishes_correct_events_after_start(bool useBufferBlock)
+        [Fact]
+        public async Task EventStore_dispatches_and_publishes_correct_events_after_start()
         {
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
-
-            var dispatcher = new SimpleEventDispatcher();
-            var publisher = new SimpleEventPublisher();
-            var persistedEvents = new[]
+            var stream = new[]
             {
-                new PersistedEventImpl(new Event1(correlationId, 1, aggregateId)) { State = PersistedEventImpl.EventState.Published },
-                new PersistedEventImpl(new Event1(correlationId, 2, aggregateId)) { State = PersistedEventImpl.EventState.Dispatched },
-                new PersistedEventImpl(new Event1(correlationId, 3, aggregateId)) { State = PersistedEventImpl.EventState.Saved }
+                new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId), new Event1(correlationId, 3, aggregateId)
             };
-            var persistence = new EventPersistence(persistedEvents);
 
-            var eventStore = new EventStore(dispatcher, publisher, persistence, loggerFactory.CreateLogger<EventStore>(), useBufferBlock);
+            var publisher = new SimpleEventPublisher();
+            var persistence = new EventPersistence();
+            var cache = new SimpleEventCache(stream);
+
+            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
             await Task.Delay(150);
             eventStore.Dispose();
 
-            Assert.Equal(1, dispatcher.DispatchedEvents.Count);
-            Assert.Equal(2, publisher.PublishedEvents.Count);
-            Assert.True(persistence.PersistedEvents.All(e => e.State == PersistedEventImpl.EventState.Published));
+            Assert.Equal(3, publisher.PublishedEvents.Count);
         }
 
         private class Event1 : EventWrapper
@@ -215,17 +188,42 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             { }
         }
 
-        private class SimpleEventDispatcher : IEventDispatcher
+        private class SimpleEventCache : IEventCache
         {
-            public IList<IEvent> DispatchedEvents { get; } = new List<IEvent>();
+            public SimpleEventCache()
+            { }
 
-            public Task Dispatch(IEvent @event, Func<CancellationToken, Task> next, CancellationToken token = default(CancellationToken))
+            public SimpleEventCache(IEnumerable<Event> preloadedStreams)
             {
-                if (@event is EventFailingToDispatch)
-                    throw new InvalidOperationException();
+                foreach (var eventsPerAggregate in preloadedStreams.GroupBy(e => e.AggregateId))
+                {
+                    var sortedEvents = eventsPerAggregate.OrderBy(e => e.Version).ToList();
+                    CachedEvents.Add(eventsPerAggregate.Key, sortedEvents);
+                }
+            }
 
-                DispatchedEvents.Add(@event);
-                return next(token);
+            public IDictionary<Guid, List<Event>> CachedEvents { get; } = new Dictionary<Guid, List<Event>>();
+
+            public Task Add(Event @event, CancellationToken cancellationToken = default)
+            {
+                if (!CachedEvents.TryGetValue(@event.AggregateId, out var list))
+                    CachedEvents[@event.AggregateId] = (list = new List<Event>());
+
+                list.Add(@event);
+                return Task.CompletedTask;
+            }
+
+            public Task<bool> Delete(Event @event, CancellationToken cancellationToken = default)
+            {
+                if (CachedEvents.TryGetValue(@event.AggregateId, out var list))
+                    return Task.FromResult(list.Remove(@event));
+
+                return Task.FromResult(false);
+            }
+
+            public Task<IEnumerable<IGrouping<Guid, Event>>> GetAll(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(CachedEvents.Values.SelectMany(e => e).GroupBy(e => e.AggregateId));
             }
         }
 
@@ -233,134 +231,52 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
         {
             public IList<IEvent> PublishedEvents { get; } = new List<IEvent>();
 
-            public Task Publish(IEvent @event, Func<CancellationToken, Task> next, CancellationToken token = default(CancellationToken))
+            public Task Publish(Event @event, CancellationToken token = default)
             {
                 if (@event is EventFailingToPublish)
                     throw new InvalidOperationException();
 
                 PublishedEvents.Add(@event);
-                return next(token);
+                return Task.CompletedTask;
             }
         }
 
         private class EventPersistence : IEventPersistence
         {
-            private readonly IList<Event> _events;
-            private readonly IList<PersistedEventImpl> _persistedEvents;
+            private readonly IList<Event> _persistedEvents;
 
             public EventPersistence()
             {
-                _events = new List<Event>();
-                _persistedEvents = new List<PersistedEventImpl>();
+                _persistedEvents = new List<Event>();
             }
 
             public EventPersistence(IEnumerable<Event> events)
             {
-                _events = new List<Event>(events);
-                _persistedEvents = new List<PersistedEventImpl>(events.Select(e => new PersistedEventImpl(e) { State = PersistedEventImpl.EventState.Published }));
+                _persistedEvents = new List<Event>(events);
             }
 
-            public EventPersistence(IEnumerable<PersistedEventImpl> events)
-            {
-                _events = new List<Event>(events.Select(e => e.Event));
-                _persistedEvents = new List<PersistedEventImpl>(events);
-            }
+            public Event[] PersistedEvents { get { return _persistedEvents.ToArray(); } }
 
-            public PersistedEventImpl[] PersistedEvents { get { return _persistedEvents.ToArray(); } }
-
-            public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default(CancellationToken))
+            public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default)
             {
-                return _persistedEvents.Where(e => e.Event.AggregateId == aggregateId && e.Event.Version >= fromVersion && CheckVersion(e))
-                                       .Select(e => e.Event)
+                return _persistedEvents.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
                                        .ToArray()
                                        .AsTask();
             }
 
-            public async Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default(CancellationToken))
+            public async Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default)
             {
                 return (await Get(aggregateId)).LastOrDefault();
             }
 
-            public Task<IPersistedEvent[]> GetUndispatched(CancellationToken token = default(CancellationToken))
+            public Task Save(IEnumerable<Event> events, CancellationToken token = default)
             {
-                return _persistedEvents.Where(e => e.State == PersistedEventImpl.EventState.Saved)
-                                       .Cast<IPersistedEvent>()
-                                       .ToArray()
-                                       .AsTask();
-            }
-
-            public Task<IPersistedEvent[]> GetUnpublished(CancellationToken token = default(CancellationToken))
-            {
-                return _persistedEvents.Where(e => e.State == PersistedEventImpl.EventState.Dispatched)
-                                       .Cast<IPersistedEvent>()
-                                       .ToArray()
-                                       .AsTask();
-            }
-
-            public Task<IPersistedEvent[]> Save(IEnumerable<Event> events, CancellationToken token = default(CancellationToken))
-            {
-                var result = new List<IPersistedEvent>();
                 foreach (var @event in events)
                 {
-                    _events.Add(@event);
-                    var persistedEvent = new PersistedEventImpl(@event)
-                    {
-                        State = PersistedEventImpl.EventState.Saved
-                    };
-                    _persistedEvents.Add(persistedEvent);
-                    result.Add(persistedEvent);
+                    _persistedEvents.Add(@event);
                 }
-                return result.ToArray().AsTask();
-            }
-
-            public Task SetDispatched(IPersistedEvent persistedEvent, CancellationToken token = default(CancellationToken))
-            {
-                var persistedEvents = new IPersistedEvent[] { persistedEvent };
-                persistedEvents.OfType<PersistedEventImpl>().ForEach(pe =>
-                {
-                    var @event = _persistedEvents.FirstOrDefault(e => e.EventId == pe.EventId);
-                    if (@event != null)
-                        @event.State = PersistedEventImpl.EventState.Dispatched;
-                });
-
                 return Task.CompletedTask;
             }
-
-            public Task SetPublished(IPersistedEvent persistedEvent, CancellationToken token = default(CancellationToken))
-            {
-                var persistedEvents = new IPersistedEvent[] { persistedEvent };
-                persistedEvents.OfType<PersistedEventImpl>().ForEach(pe =>
-                {
-                    var @event = _persistedEvents.FirstOrDefault(e => e.EventId == pe.EventId);
-                    if (@event != null)
-                        @event.State = PersistedEventImpl.EventState.Published;
-                });
-
-                return Task.CompletedTask;
-            }
-
-            private static bool CheckVersion(PersistedEventImpl persistedEvent)
-            {
-                return persistedEvent.State != PersistedEventImpl.EventState.Idle;
-            }
-        }
-
-        private class PersistedEventImpl : IPersistedEvent
-        {
-            public enum EventState { Idle, Saved, Dispatched, Published }
-
-            public PersistedEventImpl(Event @event)
-            {
-                State = EventState.Idle;
-                EventId = Guid.NewGuid();
-                Event = @event;
-            }
-
-            public Guid EventId { get; }
-
-            public EventState State { get; set; }
-
-            public Event Event { get; set; }
         }
     }
 }

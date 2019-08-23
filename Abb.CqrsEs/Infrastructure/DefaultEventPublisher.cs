@@ -1,14 +1,13 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 
 namespace Abb.CqrsEs.Infrastructure
 {
     public class DefaultEventPublisher : IEventPublisher
     {
-        public Task Publish(IEvent @event, Func<CancellationToken, Task> next, CancellationToken token = default)
+        public Task Publish(Event @event, CancellationToken cancellationToken = default)
         {
-            return next(token);
+            return Task.CompletedTask;
         }
     }
 }

@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Michael Ruppen</Authors>
+    <Description>A simple CQRS framework with an event store.</Description>
   </PropertyGroup>
 
   <ItemGroup>

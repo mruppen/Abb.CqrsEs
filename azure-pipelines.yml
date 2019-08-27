@@ -57,6 +57,7 @@ steps:
     versioningScheme: byEnvVar
     versionEnvVar: GitVersion.NuGetVersion
     includesymbols: true
+    condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/head/feature/')))
 
 - task: NuGetCommand@2
   displayName: 'Publish package'
@@ -65,3 +66,4 @@ steps:
     packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
     nuGetFeedType: external
     publishFeedCredentials: 'NuGet'
+    condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/head/feature/')))

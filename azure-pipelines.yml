@@ -52,6 +52,7 @@ steps:
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack'
+  condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
   inputs:
     command: pack
     nobuild: true
@@ -61,6 +62,7 @@ steps:
 
 - task: NuGetCommand@2
   displayName: 'Publish package'
+  condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
   inputs:
     command: push
     packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'

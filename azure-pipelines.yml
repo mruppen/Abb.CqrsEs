@@ -52,19 +52,19 @@ steps:
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack'
+  condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
   inputs:
     command: pack
     nobuild: true
     versioningScheme: byEnvVar
     versionEnvVar: GitVersion.NuGetVersion
     includesymbols: true
-    condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
 
 - task: NuGetCommand@2
   displayName: 'Publish package'
+  condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
   inputs:
     command: push
     packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
     nuGetFeedType: external
     publishFeedCredentials: 'NuGet'
-    condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))

@@ -12,6 +12,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		azure-pipelines.yml = azure-pipelines.yml
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.Mediatr", "Abb.CqrsEs.Mediatr\Abb.CqrsEs.Mediatr.csproj", "{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.Mediatr.UnitTests", "Abb.CqrsEs.Mediatr.UnitTests\Abb.CqrsEs.Mediatr.UnitTests.csproj", "{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +30,14 @@ Global
 		{FD992BFC-1B37-4381-8BDD-233FB46CE774}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD992BFC-1B37-4381-8BDD-233FB46CE774}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD992BFC-1B37-4381-8BDD-233FB46CE774}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

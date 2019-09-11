@@ -84,7 +84,7 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
+        public async Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (events == null) throw new ArgumentNullException(nameof(events));
@@ -96,7 +96,7 @@ namespace Abb.CqrsEs.Internal
             var eventsArray = events.ToArray();
             try
             {
-                return eventPersistence
+                await eventPersistence
                     .Save(events, cancellationToken)
                     .Then(async () =>
                     {
@@ -106,7 +106,8 @@ namespace Abb.CqrsEs.Internal
                     .Then(() =>
                     {
                         return Publish(aggregateId, eventsArray, eventPublisher, cancellationToken);
-                    });
+                    })
+                    .ConfigureAwait(false);
             }
             catch (InvalidOperationException) { throw; }
             catch (AggregateException e)

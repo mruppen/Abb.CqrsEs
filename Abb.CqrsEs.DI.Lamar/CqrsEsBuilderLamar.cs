@@ -12,8 +12,6 @@ namespace Abb.CqrsEs.DI.Lamar
         {
         }
 
-        protected override bool ContainerSupportFuncInjection => true;
-
         protected override void RegisterEventHandlers()
         {
             _services.Scan(scan =>

@@ -1,9 +1,9 @@
-﻿using Abb.CqrsEs.Infrastructure;
+﻿using Abb.CqrsEs.Internal;
 using Abb.CqrsEs.UnitTests.Common;
 using System;
 using Xunit;
 
-namespace Abb.CqrsEs.UnitTests.Infrastructure
+namespace Abb.CqrsEs.UnitTests.Internal
 {
     public class EventConverterTests
     {

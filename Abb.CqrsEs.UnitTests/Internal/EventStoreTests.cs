@@ -1,4 +1,4 @@
-﻿using Abb.CqrsEs.Infrastructure;
+﻿using Abb.CqrsEs.Internal;
 using Abb.CqrsEs.UnitTests.Common;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Abb.CqrsEs.UnitTests.Infrastructure
+namespace Abb.CqrsEs.UnitTests.Internal
 {
     public class EventStoreTests
     {
@@ -29,12 +29,12 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
 
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new Event[] { new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId) };
-            await eventStore.SaveAndPublish(aggregateId, events);
+            await eventStore.SaveAndPublish(aggregateId, events, _ => Task.CompletedTask, publisher);
             await Task.Delay(100);
             eventStore.Dispose();
 
@@ -51,13 +51,13 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
 
             var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid();
             var events = new Event[] { new Event1(correlationId, 1, aggregateId), new EventFailingToPublish(correlationId, 2, aggregateId) };
 
-            await eventStore.SaveAndPublish(aggregateId, events);
+            await eventStore.SaveAndPublish(aggregateId, events, _ => Task.CompletedTask, publisher);
             await Task.Delay(150);
 
             eventStore.Dispose();
@@ -77,10 +77,9 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var events = new[] { new Event1(correlationId, 1, aggregateId), new Event1(correlationId, 2, aggregateId) };
 
 
-            var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence(events);
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => null);
 
             var retrievedEvents = await eventStore.GetEvents(aggregateId);
 
@@ -97,7 +96,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
 
             var retrievedEvents = await eventStore.GetEvents(Guid.NewGuid());
 
@@ -118,7 +117,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence(events);
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
             var version = await eventStore.GetVersion(aggregateId);
             eventStore.Dispose();
             Assert.Equal(2, version);
@@ -133,7 +132,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var publisher = new SimpleEventPublisher();
             var persistence = new EventPersistence();
             var cache = new SimpleEventCache();
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
 
             var version = await eventStore.GetVersion(Guid.NewGuid());
 
@@ -157,7 +156,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var persistence = new EventPersistence();
             var cache = new SimpleEventCache(stream);
 
-            var eventStore = new EventStore(publisher, persistence, cache, loggerFactory.CreateLogger<EventStore>());
+            var eventStore = new EventStore(persistence, cache, loggerFactory.CreateLogger<EventStore>(), () => publisher);
             await Task.Delay(150);
             eventStore.Dispose();
 

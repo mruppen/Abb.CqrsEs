@@ -7,24 +7,23 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs.Internal
 {
     public class EventStore : IDisposable, IEventStore
     {
-        private readonly IEventPublisher _publisher;
         private readonly IEventPersistence _persistence;
         private readonly IEventCache _eventCache;
         private readonly ILogger _logger;
+        private readonly Func<IEventPublisher> _eventPublisher;
         private readonly ConcurrentDictionary<Guid, AggregateEventStream> _emittingEvents = new ConcurrentDictionary<Guid, AggregateEventStream>();
         private bool _disposed = false;
 
-        public EventStore(IEventPublisher eventPublisher, IEventPersistence eventPersistence, IEventCache eventCache, ILogger<EventStore> logger)
+        public EventStore(IEventPersistence eventPersistence, IEventCache eventCache, ILogger<EventStore> logger, Func<IEventPublisher> eventPublisher)
         {
-            _publisher = eventPublisher ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventPublisher));
             _persistence = eventPersistence ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventPersistence));
             _eventCache = eventCache ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventCache));
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
-
+            _eventPublisher = eventPublisher;
             InsertPendingEvents().GetAwaiter().GetResult();
         }
 
@@ -86,7 +85,7 @@ namespace Abb.CqrsEs.Infrastructure
             }
         }
 
-        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges = null, CancellationToken cancellationToken = default)
+        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (events == null) throw new ArgumentNullException(nameof(events));
@@ -106,7 +105,7 @@ namespace Abb.CqrsEs.Infrastructure
                     })
                     .Then(() =>
                     {
-                        return Publish(aggregateId, eventsArray, cancellationToken);
+                        return Publish(aggregateId, eventsArray, eventPublisher, cancellationToken);
                     });
             }
             catch (InvalidOperationException) { throw; }
@@ -131,19 +130,23 @@ namespace Abb.CqrsEs.Infrastructure
         private async Task InsertPendingEvents()
         {
             var pendingEvents = await _eventCache.GetAll();
-            foreach (var events in pendingEvents)
+            if (pendingEvents.Any())
             {
-                await Publish(events.Key, events.ToArray(), CancellationToken.None);
+                var publisher = _eventPublisher();
+                foreach (var events in pendingEvents)
+                {
+                    await Publish(events.Key, events.ToArray(), publisher, CancellationToken.None);
+                }
             }
         }
 
-        private async Task Publish(Guid aggregateId, Event[] events, CancellationToken cancellationToken)
+        private async Task Publish(Guid aggregateId, Event[] events, IEventPublisher eventPublisher, CancellationToken cancellationToken)
         {
 
             var aes = _emittingEvents.GetOrAdd(aggregateId,
                 _ => new AggregateEventStream(
                     aggregateId,
-                    (@event, token) => _publisher.Publish(@event, token),
+                    (@event, token) => eventPublisher?.Publish(@event, token),
                     @event => _eventCache.Delete(@event)));
 
             await events.ForEachAsync(async @event => await _eventCache.Add(@event));

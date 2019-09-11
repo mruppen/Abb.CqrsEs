@@ -103,9 +103,9 @@ namespace Abb.CqrsEs.Internal
                         if (commitChanges != null)
                             await commitChanges(cancellationToken);
                     })
-                    .Then(() =>
+                    .Then(async () =>
                     {
-                        return Publish(aggregateId, eventsArray, eventPublisher, cancellationToken);
+                        await Publish(aggregateId, eventsArray, eventPublisher, cancellationToken);
                     })
                     .ConfigureAwait(false);
             }

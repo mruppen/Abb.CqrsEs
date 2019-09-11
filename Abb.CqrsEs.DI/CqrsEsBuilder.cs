@@ -83,8 +83,8 @@ namespace Abb.CqrsEs.DI
                 .AddSingleton<IAggregateFactory, DefaultAggregateFactory>()
                 .AddSingleton(typeof(IEventCache), _eventCacheType)
                 .AddSingleton(typeof(IEventConverter), _eventConverterType)
+                .AddSingleton(typeof(IEventPublisher), _eventPublisherType)
                 .AddScoped(typeof(IEventPersistence), _eventPersistenceType)
-                .AddScoped(typeof(IEventPublisher), _eventPublisherType)
                 .AddSingleton(typeof(CreateAggregateRootDelegate), p =>
                 {
                     CreateAggregateRootDelegate func = t => ActivatorUtilities.GetServiceOrCreateInstance(p, t);

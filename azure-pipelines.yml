@@ -65,6 +65,6 @@ steps:
   condition: and(succeeded(), not(contains(variables['Build.SourceBranch'], 'feature/')))
   inputs:
     command: push
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
     nuGetFeedType: external
     publishFeedCredentials: 'NuGet'

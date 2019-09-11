@@ -5,17 +5,19 @@ using System.Threading.Tasks;
 
 namespace Abb.CqrsEs.Internal
 {
-    public class AggregateRepository : IAggregateRepository
+    public class AggregateInteractionService : IAggregateInteractionService
     {
         private readonly IEventStore _eventStore;
         private readonly IAggregateFactory _aggregateFactory;
+        private readonly IEventPersistence _eventPersistence;
         private readonly IEventPublisher _eventPublisher;
-        private readonly ILogger<AggregateRepository> _logger;
+        private readonly ILogger<AggregateInteractionService> _logger;
 
-        public AggregateRepository(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPublisher eventPublisher, ILogger<AggregateRepository> logger)
+        public AggregateInteractionService(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, IEventPublisher eventPublisher, ILogger<AggregateInteractionService> logger)
         {
             _eventStore = eventStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventStore));
             _aggregateFactory = aggregateFactory ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregateFactory));
+            _eventPersistence = eventPersistence;
             _eventPublisher = eventPublisher;
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
         }
@@ -25,7 +27,7 @@ namespace Abb.CqrsEs.Internal
             _logger.Debug(() => $"Initializing aggregate of type {typeof(T).Name} with id {aggregateId}");
             var aggregate = _aggregateFactory.CreateAggregate<T>();
             aggregate.Id = aggregateId;
-            var events = await _eventStore.GetEvents(aggregateId, token);
+            var events = await _eventStore.GetEvents(aggregateId, _eventPersistence, token);
             _logger.Debug(() => $"Load event history in aggregate {aggregate.AggregateIdentifier}.");
             await aggregate.LoadFromHistory(events, token);
             return aggregate;
@@ -43,7 +45,7 @@ namespace Abb.CqrsEs.Internal
 
             _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
             var actualVersion = 0;
-            if (expectedVersion <= 0 && (actualVersion = await _eventStore.GetVersion(aggregate.Id, token)) != expectedVersion)
+            if (expectedVersion <= 0 && (actualVersion = await _eventStore.GetVersion(aggregate.Id, _eventPersistence, token)) != expectedVersion)
             {
                 _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
                 throw new ConcurrencyException($"Expected version and actual version of aggregate {aggregate.AggregateIdentifier} do not match.");
@@ -57,7 +59,7 @@ namespace Abb.CqrsEs.Internal
                     await aggregate.CommitChanges(token);
                     return;
                 }
-                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), _eventPublisher, token);
+                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), _eventPersistence, _eventPublisher, token);
             }
             catch (InvalidOperationException)
             {

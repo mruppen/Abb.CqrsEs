@@ -21,7 +21,7 @@ namespace Abb.CqrsEs.Internal
         /// <exception cref="ArgumentNullException">Thrown, when <paramref name="events"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task"/> object representing the operation.</returns>
-        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPublisher eventPublisher, CancellationToken token = default);
+        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken token = default);
 
         /// <summary>
         /// Gets the latest version of an aggregate with id <paramref name="aggregateId"/>.
@@ -32,7 +32,7 @@ namespace Abb.CqrsEs.Internal
         /// <exception cref="Exceptions.UnknownGuidException">Thrown, when the <paramref name="aggregateId"/> is unknown.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task{int}"/> object representing the operation.</returns>
-        Task<int> GetVersion(Guid aggregateId, CancellationToken token = default);
+        Task<int> GetVersion(Guid aggregateId, IEventPersistence eventPersistence, CancellationToken token = default);
 
         /// <summary>
         /// Gets all events of an aggregate with id <paramref name="aggregateId"/>.
@@ -43,7 +43,7 @@ namespace Abb.CqrsEs.Internal
         /// <exception cref="Exceptions.UnknownGuidException">Thrown, when the <paramref name="aggregateId"/> is unknown.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task{IEnumerable{IEvent}}"/> object representing the operation.</returns>
-        Task<IEnumerable<Event>> GetEvents(Guid aggregateId, CancellationToken token = default);
+        Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence eventPersistence, CancellationToken token = default);
 
         /// <summary>
         /// Gets the events, starting with version <paramref name="fromVersion"/> of an aggregate with id <paramref name="aggregateId"/>.
@@ -55,6 +55,6 @@ namespace Abb.CqrsEs.Internal
         /// <exception cref="Exceptions.UnknownGuidException">Thrown, when the <paramref name="aggregateId"/> is unknown.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task{IEnumerable{IEvent}}"/> object representing the operation.</returns>
-        Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, CancellationToken token = default);
+        Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence eventPersistence, CancellationToken token = default);
     }
 }

@@ -1,4 +1,4 @@
-﻿using Abb.CqrsEs.Infrastructure;
+﻿using Abb.CqrsEs.Internal;
 using Abb.CqrsEs.UnitTests.Common;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Abb.CqrsEs.UnitTests.Infrastructure
+namespace Abb.CqrsEs.UnitTests.Internal
 {
     public class AggregateRepositoryTests
     {
@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
             await repository.Save(aggregate);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
@@ -44,7 +44,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var eventStore = new EventStore();
             GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
 
-            var aggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
+            var aggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
 
             var aggregate = await aggregateRepository.Get<Aggregate>(aggregateId);
 
@@ -63,7 +63,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
             var eventStore = new EventStore();
             eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
 
-            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate));
         }
 
@@ -178,7 +178,7 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
                     : 0;
             }
 
-            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish = null, CancellationToken token = default)
+            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPublisher eventPublisher, CancellationToken token = default)
             {
                 foreach (var @event in events)
                 {
@@ -188,6 +188,14 @@ namespace Abb.CqrsEs.UnitTests.Infrastructure
 
                 events.ForEach(Events.Add);
                 return beforePublish(token);
+            }
+        }
+
+        private class EventPublisher : IEventPublisher
+        {
+            public Task Publish(Event @event, CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
             }
         }
 

@@ -3,18 +3,20 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs.Internal
 {
     public class AggregateRepository : IAggregateRepository
     {
         private readonly IEventStore _eventStore;
         private readonly IAggregateFactory _aggregateFactory;
+        private readonly IEventPublisher _eventPublisher;
         private readonly ILogger<AggregateRepository> _logger;
 
-        public AggregateRepository(IEventStore eventStore, IAggregateFactory aggregateFactory, ILogger<AggregateRepository> logger)
+        public AggregateRepository(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPublisher eventPublisher, ILogger<AggregateRepository> logger)
         {
             _eventStore = eventStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventStore));
             _aggregateFactory = aggregateFactory ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregateFactory));
+            _eventPublisher = eventPublisher;
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
         }
 
@@ -55,7 +57,7 @@ namespace Abb.CqrsEs.Infrastructure
                     await aggregate.CommitChanges(token);
                     return;
                 }
-                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), token);
+                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), _eventPublisher, token);
             }
             catch (InvalidOperationException)
             {

@@ -1,4 +1,4 @@
-﻿namespace Abb.CqrsEs.Infrastructure
+﻿namespace Abb.CqrsEs
 {
     public interface IEventConverter
     {

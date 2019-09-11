@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs.Internal
 {
     public delegate object CreateAggregateRootDelegate(Type aggregateType);
 

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Abb.CqrsEs
 {
-    public interface IAggregateRepository
+    public interface IAggregateInteractionService
     {
         Task Save<T>(T aggregate, CancellationToken cancellationToken = default) where T : AggregateRoot;
 

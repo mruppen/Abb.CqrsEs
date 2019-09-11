@@ -11,18 +11,18 @@ using Xunit.Abstractions;
 
 namespace Abb.CqrsEs.UnitTests.Internal
 {
-    public class AggregateRepositoryTests
+    public class AggregateInteractionServiceTests
     {
         private readonly int _numberOfEvents = 10;
         private readonly ITestOutputHelper _outputHelper;
 
-        public AggregateRepositoryTests(ITestOutputHelper outputHelper)
+        public AggregateInteractionServiceTests(ITestOutputHelper outputHelper)
         {
             _outputHelper = outputHelper;
         }
 
         [Fact]
-        public async Task AggregateRepository_save_pending_changes()
+        public async Task AggregateInteractionService_save_pending_changes()
         {
             var aggregateId = Guid.NewGuid();
             var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents));
@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
+            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, new EventPublisher(), GetLogger<AggregateInteractionService>());
             await repository.Save(aggregate);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
@@ -38,22 +38,22 @@ namespace Abb.CqrsEs.UnitTests.Internal
         }
 
         [Fact]
-        public async Task AggregateRepository_get_restores_correct_state()
+        public async Task AggregateInteractionService_get_restores_correct_state()
         {
             var aggregateId = Guid.NewGuid();
             var eventStore = new EventStore();
             GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
 
-            var aggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
+            var AggregateInteractionService = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, new EventPublisher(), GetLogger<AggregateInteractionService>());
 
-            var aggregate = await aggregateRepository.Get<Aggregate>(aggregateId);
+            var aggregate = await AggregateInteractionService.Get<Aggregate>(aggregateId);
 
             Assert.Equal(_numberOfEvents, aggregate.Version);
             Assert.Equal(aggregateId, aggregate.Id);
         }
 
         [Fact]
-        public async Task AggregateRepository_detect_concurrency_exception()
+        public async Task AggregateInteractionService_detect_concurrency_exception()
         {
             var aggregateId = Guid.NewGuid();
             var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents));
@@ -63,7 +63,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var eventStore = new EventStore();
             eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
 
-            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), new EventPublisher(), GetLogger<AggregateRepository>());
+            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, new EventPublisher(), GetLogger<AggregateInteractionService>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate));
         }
 
@@ -157,12 +157,12 @@ namespace Abb.CqrsEs.UnitTests.Internal
         {
             public IList<Event> Events { get; } = new List<Event>();
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, CancellationToken token = default)
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
             {
-                return GetEvents(aggregateId, -1, token);
+                return GetEvents(aggregateId, -1, _, token);
             }
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, CancellationToken token = default)
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence _, CancellationToken token = default)
             {
                 return Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
                               .OrderBy(e => e.Version)
@@ -170,15 +170,15 @@ namespace Abb.CqrsEs.UnitTests.Internal
                               .AsTask();
             }
 
-            public async Task<int> GetVersion(Guid aggregateId, CancellationToken token = default)
+            public async Task<int> GetVersion(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
             {
-                var lastEvent = (await GetEvents(aggregateId)).LastOrDefault();
+                var lastEvent = (await GetEvents(aggregateId, _)).LastOrDefault();
                 return lastEvent != null
                     ? lastEvent.Version
                     : 0;
             }
 
-            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPublisher eventPublisher, CancellationToken token = default)
+            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPersistence _, IEventPublisher eventPublisher, CancellationToken token = default)
             {
                 foreach (var @event in events)
                 {

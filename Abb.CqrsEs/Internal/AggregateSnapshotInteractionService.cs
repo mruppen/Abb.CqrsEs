@@ -4,18 +4,20 @@ using System.Threading.Tasks;
 
 namespace Abb.CqrsEs.Internal
 {
-    public class AggregateSnapshotRepository : IAggregateRepository
+    public class AggregateSnapshotInteractionService : IAggregateInteractionService
     {
-        private readonly IAggregateRepository _decoratedRepository;
+        private readonly IAggregateInteractionService _decoratedRepository;
         private readonly IAggregateFactory _aggregateFactory;
+        private readonly IEventPersistence _eventPersistence;
         private readonly IEventStore _eventStore;
         private readonly ISnapshotStore _snapshotStore;
         private readonly ISnapshotStrategy _snapshotStrategy;
 
-        public AggregateSnapshotRepository(IAggregateRepository decorated, IAggregateFactory aggregateFactory, IEventStore eventStore, ISnapshotStore snapshotStore, ISnapshotStrategy snapshotStrategy)
+        public AggregateSnapshotInteractionService(IAggregateInteractionService decorated, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, IEventStore eventStore, ISnapshotStore snapshotStore, ISnapshotStrategy snapshotStrategy)
         {
             _decoratedRepository = decorated ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(decorated));
             _aggregateFactory = aggregateFactory ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregateFactory));
+            _eventPersistence = eventPersistence;
             _eventStore = eventStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventStore));
             _snapshotStore = snapshotStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(snapshotStore));
             _snapshotStrategy = snapshotStrategy ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(snapshotStrategy));
@@ -55,7 +57,7 @@ namespace Abb.CqrsEs.Internal
                 return await _decoratedRepository.Get<T>(aggregateId, token);
 
             await (aggregate as ISnapshottable).RestoreSnapshot(snapshot, token);
-            var events = await _eventStore.GetEvents(aggregateId, snapshot.Version + 1, token);
+            var events = await _eventStore.GetEvents(aggregateId, snapshot.Version + 1, _eventPersistence, token);
             await aggregate.LoadFromHistory(events, token);
             return aggregate;
         }

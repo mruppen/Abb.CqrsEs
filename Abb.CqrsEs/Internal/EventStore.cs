@@ -11,16 +11,14 @@ namespace Abb.CqrsEs.Internal
 {
     public class EventStore : IDisposable, IEventStore
     {
-        private readonly IEventPersistence _persistence;
         private readonly IEventCache _eventCache;
         private readonly ILogger _logger;
         private readonly Func<IEventPublisher> _eventPublisher;
         private readonly ConcurrentDictionary<Guid, AggregateEventStream> _emittingEvents = new ConcurrentDictionary<Guid, AggregateEventStream>();
         private bool _disposed = false;
 
-        public EventStore(IEventPersistence eventPersistence, IEventCache eventCache, ILogger<EventStore> logger, Func<IEventPublisher> eventPublisher)
+        public EventStore(IEventCache eventCache, ILogger<EventStore> logger, Func<IEventPublisher> eventPublisher)
         {
-            _persistence = eventPersistence ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventPersistence));
             _eventCache = eventCache ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventCache));
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
             _eventPublisher = eventPublisher;
@@ -32,17 +30,18 @@ namespace Abb.CqrsEs.Internal
             Dispose(true);
         }
 
-        public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, CancellationToken token = default)
-            => GetEvents(aggregateId, AggregateRoot.InitialVersion, token);
+        public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence eventPersistence, CancellationToken token = default)
+            => GetEvents(aggregateId, AggregateRoot.InitialVersion, eventPersistence, token);
 
-        public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, CancellationToken token = default)
+        public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence eventPersistence, CancellationToken token = default)
         {
             ThrowIfDisposed();
             CheckAggregateIdOrThrow(aggregateId);
             _logger.Info(() => $"Getting events of aggregate with id {aggregateId} starting with version {fromVersion}.");
             try
             {
-                return _persistence.Get(aggregateId, fromVersion, token)
+                return eventPersistence
+                    .Get(aggregateId, fromVersion, token)
                     .Then(events =>
                     {
                         var ensured = events ?? new Event[0];
@@ -59,14 +58,14 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        public async Task<int> GetVersion(Guid aggregateId, CancellationToken token = default)
+        public async Task<int> GetVersion(Guid aggregateId, IEventPersistence eventPersistence, CancellationToken token = default)
         {
             ThrowIfDisposed();
             CheckAggregateIdOrThrow(aggregateId);
             _logger.Debug(() => $"Getting version of aggregate with id {aggregateId}");
             try
             {
-                var lastEvent = await _persistence.GetLastOrDefault(aggregateId, token).ConfigureAwait(false);
+                var lastEvent = await eventPersistence.GetLastOrDefault(aggregateId, token).ConfigureAwait(false);
                 if (lastEvent == null)
                 {
                     _logger.Debug(() => $"Aggregate {aggregateId} does not exist and version is {AggregateRoot.InitialVersion}.");
@@ -85,7 +84,7 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
+        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (events == null) throw new ArgumentNullException(nameof(events));
@@ -97,7 +96,8 @@ namespace Abb.CqrsEs.Internal
             var eventsArray = events.ToArray();
             try
             {
-                return _persistence.Save(events, cancellationToken)
+                return eventPersistence
+                    .Save(events, cancellationToken)
                     .Then(async () =>
                     {
                         if (commitChanges != null)

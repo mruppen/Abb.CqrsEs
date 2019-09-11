@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs
 {
     public interface ISnapshotStore
     {

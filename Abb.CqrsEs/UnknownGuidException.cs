@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs
 {
     public class UnknownGuidException : Exception
     {

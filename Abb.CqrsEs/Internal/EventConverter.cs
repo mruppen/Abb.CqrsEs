@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs.Internal
 {
     public class EventConverter : IEventConverter
     {

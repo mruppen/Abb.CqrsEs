@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Infrastructure
+namespace Abb.CqrsEs.Internal
 {
     /// <summary>
     /// Defines the methods of an event store.
@@ -16,11 +16,12 @@ namespace Abb.CqrsEs.Infrastructure
         /// <param name="aggregateId">The <see cref="Guid"/> of the aggregate.</param>
         /// <param name="events">The aggregate's pending events.</param>
         /// <param name="commitChanges">If specified, this function will be executed before any dispatching occurs.</param>
+        /// <param name="eventPublisher">The event publisher instance.</param>
         /// <param name="token">A cancellation token.</param>
         /// <exception cref="ArgumentNullException">Thrown, when <paramref name="events"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task"/> object representing the operation.</returns>
-        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, CancellationToken token = default);
+        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPublisher eventPublisher, CancellationToken token = default);
 
         /// <summary>
         /// Gets the latest version of an aggregate with id <paramref name="aggregateId"/>.

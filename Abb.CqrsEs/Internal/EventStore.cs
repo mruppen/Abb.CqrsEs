@@ -13,16 +13,14 @@ namespace Abb.CqrsEs.Internal
     {
         private readonly IEventCache _eventCache;
         private readonly ILogger _logger;
-        private readonly IEventPublisher _eventPublisher;
         private readonly ConcurrentDictionary<Guid, AggregateEventStream> _emittingEvents = new ConcurrentDictionary<Guid, AggregateEventStream>();
         private bool _disposed = false;
 
-        public EventStore(IEventCache eventCache, ILogger<EventStore> logger, IEventPublisher eventPublisher)
+        public EventStore(IEventCache eventCache, ILogger<EventStore> logger, Func<IEventPublisher> eventPublisher)
         {
             _eventCache = eventCache ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventCache));
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
-            _eventPublisher = eventPublisher;
-            InsertPendingEvents().GetAwaiter().GetResult();
+            InsertPendingEvents(eventPublisher).GetAwaiter().GetResult();
         }
 
         public void Dispose()
@@ -84,7 +82,7 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, CancellationToken cancellationToken = default)
+        public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (events == null) throw new ArgumentNullException(nameof(events));
@@ -105,7 +103,7 @@ namespace Abb.CqrsEs.Internal
                     })
                     .Then(() =>
                     {
-                        return Publish(aggregateId, eventsArray, cancellationToken);
+                        return Publish(aggregateId, eventsArray, eventPublisher, cancellationToken);
                     });
             }
             catch (InvalidOperationException) { throw; }
@@ -127,25 +125,25 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        private async Task InsertPendingEvents()
+        private async Task InsertPendingEvents(Func<IEventPublisher> eventPublisher)
         {
             var pendingEvents = await _eventCache.GetAll();
             if (pendingEvents.Any())
             {
                 foreach (var events in pendingEvents)
                 {
-                    await Publish(events.Key, events.ToArray(), CancellationToken.None);
+                    await Publish(events.Key, events.ToArray(), eventPublisher(), CancellationToken.None);
                 }
             }
         }
 
-        private async Task Publish(Guid aggregateId, Event[] events, CancellationToken cancellationToken)
+        private async Task Publish(Guid aggregateId, Event[] events, IEventPublisher eventPublisher, CancellationToken cancellationToken)
         {
 
             var aes = _emittingEvents.GetOrAdd(aggregateId,
                 _ => new AggregateEventStream(
                     aggregateId,
-                    (@event, token) => _eventPublisher.Publish(@event, token),
+                    (@event, token) => eventPublisher.Publish(@event, token),
                     @event => _eventCache.Delete(@event)));
 
             await events.ForEachAsync(async @event => await _eventCache.Add(@event));

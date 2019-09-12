@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Michael Ruppen</Authors>
+    <Description>Provides DI registration capabilities for Abb.CqrsEs package using Lamar's ServiceRegistry.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lamar.Microsoft.DependencyInjection" Version="3.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Abb.CqrsEs.DI\Abb.CqrsEs.DI.csproj" />
+  </ItemGroup>
+
+</Project>

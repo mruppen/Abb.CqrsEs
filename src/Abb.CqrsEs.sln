@@ -7,11 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs", "Abb.CqrsEs\Ab
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.UnitTests", "Abb.CqrsEs.UnitTests\Abb.CqrsEs.UnitTests.csproj", "{FD992BFC-1B37-4381-8BDD-233FB46CE774}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9D6E3D57-2D5A-466D-92A3-6ADB18FFD6DB}"
-	ProjectSection(SolutionItems) = preProject
-		azure-pipelines.yml = azure-pipelines.yml
-	EndProjectSection
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.Mediatr", "Abb.CqrsEs.Mediatr\Abb.CqrsEs.Mediatr.csproj", "{C072CE03-79C7-4ACA-BE81-2DE513DDE81C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.Mediatr.UnitTests", "Abb.CqrsEs.Mediatr.UnitTests\Abb.CqrsEs.Mediatr.UnitTests.csproj", "{5841F01C-1FB6-4BDB-87CC-85A1B4081E46}"
@@ -23,6 +18,11 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.DI.Lamar.UnitTests", "Abb.CqrsEs.DI.Lamar.UnitTests\Abb.CqrsEs.DI.Lamar.UnitTests.csproj", "{E5F9BF2E-63E9-4AC5-A6D4-5D53A7582B0E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Abb.CqrsEs.DI.UnitTests", "Abb.CqrsEs.DI.UnitTests\Abb.CqrsEs.DI.UnitTests.csproj", "{52B3459F-6739-45B8-8F73-5696E680E908}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6A356D9B-BF68-42F3-9FEA-8D244E867142}"
+	ProjectSection(SolutionItems) = preProject
+		..\azure-pipelines.yml = ..\azure-pipelines.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Michael Ruppen</Authors>
+    <Description>A simple CQRS framework with an event store.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Abb.Core" Version="1.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+  </ItemGroup>
+
+</Project>

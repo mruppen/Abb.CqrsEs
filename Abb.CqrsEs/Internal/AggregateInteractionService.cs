@@ -10,15 +10,13 @@ namespace Abb.CqrsEs.Internal
         private readonly IEventStore _eventStore;
         private readonly IAggregateFactory _aggregateFactory;
         private readonly IEventPersistence _eventPersistence;
-        private readonly IEventPublisher _eventPublisher;
         private readonly ILogger<AggregateInteractionService> _logger;
 
-        public AggregateInteractionService(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, IEventPublisher eventPublisher, ILogger<AggregateInteractionService> logger)
+        public AggregateInteractionService(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, ILogger<AggregateInteractionService> logger)
         {
             _eventStore = eventStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventStore));
             _aggregateFactory = aggregateFactory ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregateFactory));
             _eventPersistence = eventPersistence;
-            _eventPublisher = eventPublisher;
             _logger = logger ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(logger));
         }
 
@@ -59,7 +57,7 @@ namespace Abb.CqrsEs.Internal
                     await aggregate.CommitChanges(token);
                     return;
                 }
-                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), _eventPersistence, _eventPublisher, token).ConfigureAwait(false);
+                await _eventStore.SaveAndPublish(aggregate.Id, eventStream, c => aggregate.CommitChanges(c), _eventPersistence, token).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {

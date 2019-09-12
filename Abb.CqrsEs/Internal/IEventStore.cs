@@ -21,7 +21,7 @@ namespace Abb.CqrsEs.Internal
         /// <exception cref="ArgumentNullException">Thrown, when <paramref name="events"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown, when the operation could not be completed successfully.</exception>
         /// <returns>A <see cref="Task"/> object representing the operation.</returns>
-        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, IEventPublisher eventPublisher, CancellationToken token = default);
+        Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, CancellationToken token = default);
 
         /// <summary>
         /// Gets the latest version of an aggregate with id <paramref name="aggregateId"/>.

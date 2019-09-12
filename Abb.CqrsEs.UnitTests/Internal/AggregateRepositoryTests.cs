@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, null, GetLogger<AggregateInteractionService>());
+            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
             await repository.Save(aggregate);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
@@ -44,7 +44,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var eventStore = new EventStore();
             GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
 
-            var AggregateInteractionService = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, null, GetLogger<AggregateInteractionService>());
+            var AggregateInteractionService = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
 
             var aggregate = await AggregateInteractionService.Get<Aggregate>(aggregateId);
 
@@ -63,7 +63,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var eventStore = new EventStore();
             eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
 
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, null, GetLogger<AggregateInteractionService>());
+            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate));
         }
 
@@ -178,7 +178,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
                     : 0;
             }
 
-            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPersistence r, IEventPublisher u, CancellationToken token = default)
+            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPersistence _, CancellationToken token = default)
             {
                 foreach (var @event in events)
                 {

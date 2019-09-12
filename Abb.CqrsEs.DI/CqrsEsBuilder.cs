@@ -25,8 +25,6 @@ namespace Abb.CqrsEs.DI
             _optionalBuilder = new Lazy<ICqrsEsOptionalBuilder>(() => new CqrsEsOptionalBuilder(this, t => OverrideEventConverter(t), (s, t) => EnableSnapshots(s, t), () => _enableHandlerRegistration = true));
         }
 
-        protected virtual bool DoesContainerSupportFuncInjection => false;
-
         public ICqrsEsOptionalBuilder Optional => _optionalBuilder.Value;
 
         public ICqrsEsBuilder AddEventCache<T>() where T : IEventCache
@@ -83,22 +81,13 @@ namespace Abb.CqrsEs.DI
                 .AddSingleton<IAggregateFactory, DefaultAggregateFactory>()
                 .AddSingleton(typeof(IEventCache), _eventCacheType)
                 .AddSingleton(typeof(IEventConverter), _eventConverterType)
-                .AddScoped(typeof(IEventPublisher), _eventPublisherType)
+                .AddSingleton(typeof(IEventPublisher), _eventPublisherType)
                 .AddScoped(typeof(IEventPersistence), _eventPersistenceType)
                 .AddSingleton(typeof(CreateAggregateRootDelegate), p =>
                 {
                     CreateAggregateRootDelegate func = t => ActivatorUtilities.GetServiceOrCreateInstance(p, t);
                     return func;
                 });
-
-            if (!DoesContainerSupportFuncInjection)
-            {
-                services.AddSingleton<Func<IEventPublisher>>(p =>
-                {
-                    Func<IEventPublisher> func = () => p.GetRequiredService<IEventPublisher>();
-                    return func;
-                });
-            }
 
             if (_snapshotStoreType != null)
             {

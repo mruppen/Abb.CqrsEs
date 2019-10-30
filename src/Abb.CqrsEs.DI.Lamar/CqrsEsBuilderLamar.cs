@@ -1,5 +1,5 @@
-﻿using Lamar;
-using Lamar.Scanning;
+﻿using BaselineTypeDiscovery;
+using Lamar;
 using Lamar.Scanning.Conventions;
 using Microsoft.Extensions.DependencyInjection;
 using System;

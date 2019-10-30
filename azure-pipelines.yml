@@ -21,11 +21,17 @@ steps:
   displayName: 'GitVersion'
 
 - task: UseDotNet@2
-  displayName: 'Use .NET Core sdk'
+  displayName: 'Use .NET Core 3.0.x SDK'
   inputs:
     packageType: sdk
-    version: 2.2.x
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+    version: 3.0.x
+#    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+- task: UseDotNet@2
+  displayName: 'Install .NET Core 2.2.x runtime'
+  inputs:
+    version: '2.2.x'
+    packageType: runtime
 
 - task: NuGetToolInstaller@0
   inputs:

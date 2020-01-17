@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>Latest</LangVersion>
     <Authors>Michael Ruppen</Authors>
     <Description>Provides DI registration capabilities for Abb.CqrsEs package.</Description>

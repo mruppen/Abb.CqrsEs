@@ -26,10 +26,10 @@ namespace Abb.CqrsEs.DI.UnitTests
 
             var provider = services.BuildServiceProvider();
 
-            var repository = provider.GetService<IAggregateInteractionService>();
+            var repository = provider.GetService<IAggregateRepository>();
 
             Assert.NotNull(repository);
-            Assert.IsType<AggregateInteractionService>(repository);
+            Assert.IsType<AggregateRepository>(repository);
         }
 
         [Fact]
@@ -48,10 +48,10 @@ namespace Abb.CqrsEs.DI.UnitTests
 
             var provider = services.BuildServiceProvider();
 
-            var repository = provider.GetService<IAggregateInteractionService>();
+            var repository = provider.GetService<IAggregateRepository>();
 
             Assert.NotNull(repository);
-            Assert.IsType<AggregateSnapshotInteractionService>(repository);
+            Assert.IsType<AggregateSnapshotRepositoryDecorator>(repository);
         }
 
         [Fact]

@@ -3,18 +3,25 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Abb.CqrsEs
+namespace Abb.CqrsEs.Internal
 {
     internal class CompiledMethodInfo
     {
-        private readonly Func<object, object[], object> _func;
+        private readonly Func<object, object[], object?> _func;
 
         public Type[] ParameterTypes { get; private set; }
 
         public CompiledMethodInfo(MethodInfo methodInfo, Type type)
         {
-            if (methodInfo == null) throw ExceptionHelper.ArgumentMustNotBeNull(nameof(methodInfo));
-            if (type == null) throw ExceptionHelper.ArgumentMustNotBeNull(nameof(type));
+            if (methodInfo == null)
+            {
+                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(methodInfo));
+            }
+
+            if (type == null)
+            {
+                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(type));
+            }
 
             var instanceExpression = Expression.Parameter(typeof(object), "instance");
             var argumentsExpression = Expression.Parameter(typeof(object[]), "arguments");
@@ -44,7 +51,7 @@ namespace Abb.CqrsEs
             }
         }
 
-        public object Invoke(object instance, params object[] arguments)
+        public object? Invoke(object instance, params object[] arguments)
         {
             return _func(instance, arguments);
         }

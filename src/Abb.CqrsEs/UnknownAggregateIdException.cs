@@ -2,20 +2,20 @@
 
 namespace Abb.CqrsEs
 {
-    public class UnknownGuidException : Exception
+    public class UnknownAggregateIdException : Exception
     {
-        public UnknownGuidException(Guid unknownId)
+        public UnknownAggregateIdException(Guid unknownId)
             : this(unknownId, $"Guid {unknownId} is unknown.")
 
         { }
 
-        public UnknownGuidException(Guid unknownGuid, string message)
+        public UnknownAggregateIdException(Guid unknownGuid, string message)
             : base(message)
         {
             UnknownGuid = unknownGuid;
         }
 
-        public UnknownGuidException(Guid unknownGuid, string message, Exception innerException)
+        public UnknownAggregateIdException(Guid unknownGuid, string message, Exception innerException)
             : base(message, innerException)
         {
             UnknownGuid = unknownGuid;

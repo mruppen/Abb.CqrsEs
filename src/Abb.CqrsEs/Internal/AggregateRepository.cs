@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 namespace Abb.CqrsEs.Internal
 {
-    public class AggregateInteractionService : IAggregateInteractionService
+    public class AggregateRepository : IAggregateRepository
     {
         private readonly IEventStore _eventStore;
         private readonly IAggregateFactory _aggregateFactory;
         private readonly IEventPersistence _eventPersistence;
-        private readonly ILogger<AggregateInteractionService> _logger;
+        private readonly ILogger<AggregateRepository> _logger;
 
-        public AggregateInteractionService(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, ILogger<AggregateInteractionService> logger)
+        public AggregateRepository(IEventStore eventStore, IAggregateFactory aggregateFactory, IEventPersistence eventPersistence, ILogger<AggregateRepository> logger)
         {
             _eventStore = eventStore ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(eventStore));
             _aggregateFactory = aggregateFactory ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregateFactory));
@@ -39,7 +39,9 @@ namespace Abb.CqrsEs.Internal
         public async Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot
         {
             if (aggregate == null)
+            {
                 throw ExceptionHelper.ArgumentMustNotBeNull(nameof(aggregate));
+            }
 
             _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
             var actualVersion = 0;

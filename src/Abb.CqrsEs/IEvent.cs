@@ -4,7 +4,7 @@ namespace Abb.CqrsEs
 {
     public interface IEvent : IMessage
     {
-        Guid AggregateId { get; }
+        string AggregateId { get; }
 
         int Version { get; }
 

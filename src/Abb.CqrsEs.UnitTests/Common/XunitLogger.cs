@@ -25,7 +25,9 @@ namespace Abb.CqrsEs.UnitTests.Common
         {
             _testOutputHelper.WriteLine($"{_categoryName} [{eventId}] {formatter(state, exception)}");
             if (exception != null)
+            {
                 _testOutputHelper.WriteLine(exception.ToString());
+            }
         }
 
         private class NoopDisposable : IDisposable

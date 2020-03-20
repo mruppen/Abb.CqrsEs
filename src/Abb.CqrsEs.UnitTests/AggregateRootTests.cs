@@ -133,14 +133,21 @@ namespace Abb.CqrsEs.UnitTests
                 var number = random.Next(1, 40);
                 var nextVersion = aggregate.Version + i + 1;
                 if (number <= 10)
+                {
                     yield return new Event1(Guid.NewGuid(), nextVersion, aggregate.Id);
+                }
                 else if (number <= 20)
+                {
                     yield return new Event2(Guid.NewGuid(), nextVersion, aggregate.Id);
+                }
                 else if (number <= 30)
+                {
                     yield return new Event3(Guid.NewGuid(), nextVersion, aggregate.Id);
+                }
                 else
+                {
                     yield return new Event4(Guid.NewGuid(), nextVersion, aggregate.Id);
-
+                }
             }
         }
 

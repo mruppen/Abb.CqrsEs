@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Abb.CqrsEs.Internal
+namespace Abb.CqrsEs
 {
     public class DefaultSnapshotStrategy : ISnapshotStrategy
     {
@@ -14,17 +14,23 @@ namespace Abb.CqrsEs.Internal
         public bool TakeSnapshot<T>(T aggregateRoot) where T : AggregateRoot
         {
             if (!IsSnapshottable(typeof(T)))
+            {
                 return false;
+            }
 
             var pendingChangesCount = aggregateRoot.PendingChangesCount;
             if (pendingChangesCount == 0)
+            {
                 return false;
+            }
 
             var previousVersion = aggregateRoot.Version - pendingChangesCount;
             for (var i = 1; i <= pendingChangesCount; i++)
             {
                 if ((previousVersion + i) % MinimumEventsBetweenSnapshots == 0)
+                {
                     return true;
+                }
             }
 
             return false;

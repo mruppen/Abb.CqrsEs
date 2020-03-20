@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateRepository>());
             await repository.Save(aggregate);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
@@ -44,7 +44,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var eventStore = new EventStore();
             GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
 
-            var AggregateInteractionService = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
+            var AggregateInteractionService = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateRepository>());
 
             var aggregate = await AggregateInteractionService.Get<Aggregate>(aggregateId);
 
@@ -63,7 +63,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var eventStore = new EventStore();
             eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
 
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate));
         }
 
@@ -75,9 +75,13 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 var number = random.Next(1, 20);
                 var nextVersion = i + 1;
                 if (number <= 10)
+                {
                     yield return new Event1(Guid.NewGuid(), nextVersion, aggregateId);
+                }
                 else
+                {
                     yield return new Event2(Guid.NewGuid(), nextVersion, aggregateId);
+                }
             }
         }
 
@@ -183,7 +187,9 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 foreach (var @event in events)
                 {
                     if (Events.Any(e => e.AggregateId == @event.AggregateId && e.Version == @event.Version))
+                    {
                         throw new InvalidOperationException();
+                    }
                 }
 
                 events.ForEach(Events.Add);

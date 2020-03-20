@@ -206,7 +206,9 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public Task Add(Event @event, CancellationToken cancellationToken = default)
             {
                 if (!CachedEvents.TryGetValue(@event.AggregateId, out var list))
+                {
                     CachedEvents[@event.AggregateId] = (list = new List<Event>());
+                }
 
                 list.Add(@event);
                 return Task.CompletedTask;
@@ -215,7 +217,9 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public Task<bool> Delete(Event @event, CancellationToken cancellationToken = default)
             {
                 if (CachedEvents.TryGetValue(@event.AggregateId, out var list))
+                {
                     return Task.FromResult(list.Remove(@event));
+                }
 
                 return Task.FromResult(false);
             }
@@ -233,7 +237,9 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public Task Publish(Event @event, CancellationToken token = default)
             {
                 if (@event is EventFailingToPublish)
+                {
                     throw new InvalidOperationException();
+                }
 
                 PublishedEvents.Add(@event);
                 return Task.CompletedTask;

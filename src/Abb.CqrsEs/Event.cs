@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
+using Newtonsoft.Json;
 
 namespace Abb.CqrsEs
 {
@@ -11,7 +11,7 @@ namespace Abb.CqrsEs
         }
 
         [JsonProperty("aggregateId")]
-        public Guid AggregateId { get; internal set; }
+        public string AggregateId { get; internal set; } = string.Empty;
 
         [JsonProperty("version")]
         public int Version { get; internal set; }

@@ -33,10 +33,14 @@ namespace Abb.CqrsEs.DI
         public ICqrsEsBuilder AddEventCache(Type type)
         {
             if (type == null)
+            {
                 throw new ArgumentNullException(nameof(type));
+            }
 
             if (!typeof(IEventCache).IsAssignableFrom(type))
+            {
                 throw new ArgumentException($"Type {type.Name} does not implement {nameof(IEventCache)}.");
+            }
 
             _eventCacheType = type;
             return this;
@@ -48,10 +52,14 @@ namespace Abb.CqrsEs.DI
         public ICqrsEsBuilder AddEventPersistence(Type type)
         {
             if (type == null)
+            {
                 throw new ArgumentNullException(nameof(type));
+            }
 
             if (!typeof(IEventPersistence).IsAssignableFrom(type))
+            {
                 throw new ArgumentException($"Type {type.Name} does not implement {nameof(IEventPersistence)}.");
+            }
 
             _eventPersistenceType = type;
             return this;
@@ -63,10 +71,14 @@ namespace Abb.CqrsEs.DI
         public ICqrsEsBuilder AddEventPublisher(Type type)
         {
             if (type == null)
+            {
                 throw new ArgumentNullException(nameof(type));
+            }
 
             if (!typeof(IEventPublisher).IsAssignableFrom(type))
+            {
                 throw new ArgumentException($"Type {type.Name} does not implement {nameof(IEventPublisher)}.");
+            }
 
             _eventPublisherType = type;
             return this;
@@ -75,7 +87,9 @@ namespace Abb.CqrsEs.DI
         public TServices Build()
         {
             if (_eventCacheType == null || _eventConverterType == null || _eventPersistenceType == null || _eventPublisherType == null)
+            {
                 throw new InvalidOperationException("One or more types are not configured correctly.");
+            }
 
             var services = _services.AddSingleton<IEventStore, EventStore>()
                 .AddSingleton<IAggregateFactory, DefaultAggregateFactory>()
@@ -93,19 +107,21 @@ namespace Abb.CqrsEs.DI
             {
                 services.AddScoped(typeof(ISnapshotStore), _snapshotStoreType)
                     .AddScoped(typeof(ISnapshotStrategy), _snapshotStrategyType)
-                    .AddScoped(typeof(IAggregateInteractionService), p =>
+                    .AddScoped(typeof(IAggregateRepository), p =>
                     {
-                        var basicRepository = ActivatorUtilities.GetServiceOrCreateInstance<AggregateInteractionService>(p);
-                        return ActivatorUtilities.CreateInstance<AggregateSnapshotInteractionService>(p, basicRepository);
+                        var basicRepository = ActivatorUtilities.GetServiceOrCreateInstance<AggregateRepository>(p);
+                        return ActivatorUtilities.CreateInstance<AggregateSnapshotRepositoryDecorator>(p, basicRepository);
                     });
             }
             else
             {
-                services.AddScoped<IAggregateInteractionService, AggregateInteractionService>();
+                services.AddScoped<IAggregateRepository, AggregateRepository>();
             }
 
             if (_enableHandlerRegistration)
+            {
                 RegisterEventHandlers();
+            }
 
             return (TServices)services;
         }
@@ -134,16 +150,24 @@ namespace Abb.CqrsEs.DI
         private ICqrsEsBuilder EnableSnapshots(Type snapshotStoreType, Type snapshotStrategyType)
         {
             if (snapshotStoreType == null)
+            {
                 throw new ArgumentNullException(nameof(snapshotStoreType));
+            }
 
             if (snapshotStrategyType == null)
+            {
                 throw new ArgumentNullException(nameof(snapshotStrategyType));
+            }
 
             if (!typeof(ISnapshotStore).IsAssignableFrom(snapshotStoreType))
+            {
                 throw new ArgumentException($"Type {snapshotStoreType.Name} does not implement {nameof(ISnapshotStore)}.");
+            }
 
             if (!typeof(ISnapshotStrategy).IsAssignableFrom(snapshotStrategyType))
+            {
                 throw new ArgumentException($"Type {snapshotStrategyType.Name} does not implement {nameof(ISnapshotStrategy)}.");
+            }
 
             _snapshotStoreType = snapshotStoreType;
             _snapshotStrategyType = snapshotStrategyType;
@@ -153,10 +177,14 @@ namespace Abb.CqrsEs.DI
         private ICqrsEsBuilder OverrideEventConverter(Type type)
         {
             if (type == null)
+            {
                 throw new ArgumentNullException(nameof(type));
+            }
 
             if (!typeof(IEventConverter).IsAssignableFrom(type))
+            {
                 throw new ArgumentException($"Type {type.Name} does not implement {nameof(IEventConverter)}.");
+            }
 
             _eventConverterType = type;
             return this;

@@ -3,38 +3,50 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Abb.CqrsEs
+namespace Abb.CqrsEs.Internal
 {
     internal static class DynamicMethodInvoker
     {
         private const BindingFlags _bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        private static volatile Dictionary<int, CompiledMethodInfo> _cachedMembers = new Dictionary<int, CompiledMethodInfo>();
-        private static readonly object _lock = new object();
+        private static volatile Dictionary<int, CompiledMethodInfo?> s_cachedMembers = new Dictionary<int, CompiledMethodInfo?>();
+        private static readonly object s_lock = new object();
 
-        internal static object Invoke<T>(this T obj, string methodName, params object[] args)
+        internal static object? Invoke<T>(this T obj, string methodName, params object[] args)
         {
-            if (obj == null) throw ExceptionHelper.ArgumentMustNotBeNull(nameof(obj));
-            if (string.IsNullOrEmpty(methodName)) throw ExceptionHelper.ArgumentMustNotBeNullOrEmpty(nameof(methodName));
+            if (obj == null)
+            {
+                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(obj));
+            }
+
+            if (string.IsNullOrEmpty(methodName))
+            {
+                throw ExceptionHelper.ArgumentMustNotBeNullOrEmpty(nameof(methodName));
+            }
 
             var type = obj.GetType();
             var hash = Hash(type, methodName, args);
-            var exists = _cachedMembers.TryGetValue(hash, out var method);
+            var exists = s_cachedMembers.TryGetValue(hash, out var method);
             if (exists)
+            {
                 return method?.Invoke(obj, args);
+            }
 
-            lock (_lock)
+            lock (s_lock)
             {
                 //Recheck if exist inside lock in case another thread has added it.
-                exists = _cachedMembers.TryGetValue(hash, out method);
-                var dict = new Dictionary<int, CompiledMethodInfo>(_cachedMembers);
-                if (exists) return method?.Invoke(obj, args);
+                exists = s_cachedMembers.TryGetValue(hash, out method);
+                var dict = new Dictionary<int, CompiledMethodInfo?>(s_cachedMembers);
+                if (exists)
+                {
+                    return method?.Invoke(obj, args);
+                }
 
                 var argtypes = GetArgTypes(args);
                 var m = GetMember(type, methodName, argtypes);
                 method = m == null ? null : new CompiledMethodInfo(m, type);
 
                 dict.Add(hash, method);
-                _cachedMembers = dict;
+                s_cachedMembers = dict;
                 return method?.Invoke(obj, args);
             }
         }
@@ -63,7 +75,7 @@ namespace Abb.CqrsEs
             return argtypes;
         }
 
-        private static MethodInfo GetMember(Type type, string name, Type[] argtypes)
+        private static MethodInfo? GetMember(Type type, string name, Type[] argtypes)
         {
             while (true)
             {
@@ -72,11 +84,15 @@ namespace Abb.CqrsEs
                              methods.FirstOrDefault(m => m.GetParameters().Select(p => p.ParameterType).ToArray().Matches(argtypes));
 
                 if (member != null)
+                {
                     return member;
+                }
 
                 var t = type.GetTypeInfo().BaseType;
                 if (t == null)
+                {
                     return null;
+                }
 
                 type = t;
             }
@@ -84,11 +100,17 @@ namespace Abb.CqrsEs
 
         private static bool Matches(this Type[] arr, Type[] args)
         {
-            if (arr.Length != args.Length) return false;
+            if (arr.Length != args.Length)
+            {
+                return false;
+            }
+
             for (var i = 0; i < args.Length; i++)
             {
                 if (!arr[i].IsAssignableFrom(args[i]))
+                {
                     return false;
+                }
             }
             return true;
         }

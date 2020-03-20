@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs
+namespace Abb.CqrsEs.Default
 {
     public interface IEventPersistence
     {

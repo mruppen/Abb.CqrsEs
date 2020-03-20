@@ -31,16 +31,24 @@ namespace Abb.CqrsEs.DI
         public ICqrsEsBuilder EnableSnapshots(Type snapshotStoreType, Type snapshotStrategyType)
         {
             if (snapshotStoreType == null)
+            {
                 throw new ArgumentNullException(nameof(snapshotStoreType));
+            }
 
             if (snapshotStrategyType == null)
+            {
                 throw new ArgumentNullException(nameof(snapshotStrategyType));
+            }
 
             if (!typeof(ISnapshotStore).IsAssignableFrom(snapshotStoreType))
+            {
                 throw new ArgumentException($"Type {snapshotStoreType.Name} does not implement {nameof(ISnapshotStore)}.");
+            }
 
             if (!typeof(ISnapshotStrategy).IsAssignableFrom(snapshotStrategyType))
+            {
                 throw new ArgumentException($"Type {snapshotStrategyType.Name} does not implement {nameof(ISnapshotStrategy)}.");
+            }
 
             _enableSnapshots(snapshotStoreType, snapshotStrategyType);
             return _cqrsEsBuilder;
@@ -52,10 +60,14 @@ namespace Abb.CqrsEs.DI
         public ICqrsEsBuilder OverrideEventConverter(Type type)
         {
             if (type == null)
+            {
                 throw new ArgumentNullException(nameof(type));
+            }
 
             if (!typeof(IEventConverter).IsAssignableFrom(type))
+            {
                 throw new ArgumentException($"Type {type.Name} does not implement {nameof(IEventConverter)}.");
+            }
 
             _overrideEventConverter(type);
             return _cqrsEsBuilder;

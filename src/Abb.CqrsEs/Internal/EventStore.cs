@@ -50,7 +50,7 @@ namespace Abb.CqrsEs.Internal
                     });
             }
             catch (ArgumentException) { throw; }
-            catch (UnknownGuidException) { throw; }
+            catch (UnknownAggregateIdException) { throw; }
             catch (InvalidOperationException) { throw; }
             catch (Exception e)
             {
@@ -76,7 +76,7 @@ namespace Abb.CqrsEs.Internal
                 return lastEvent.Version;
             }
             catch (ArgumentException) { throw; }
-            catch (UnknownGuidException) { throw; }
+            catch (UnknownAggregateIdException) { throw; }
             catch (InvalidOperationException) { throw; }
             catch (Exception e)
             {
@@ -87,7 +87,11 @@ namespace Abb.CqrsEs.Internal
         public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> commitChanges, IEventPersistence eventPersistence, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (events == null) throw new ArgumentNullException(nameof(events));
+            if (events == null)
+            {
+                throw new ArgumentNullException(nameof(events));
+            }
+
             _logger.Info(() =>
             {
                 return $"Saving and publishing events for aggegrate with id {aggregateId}";
@@ -101,7 +105,9 @@ namespace Abb.CqrsEs.Internal
                     .Then(async () =>
                     {
                         if (commitChanges != null)
+                        {
                             await commitChanges(cancellationToken).ConfigureAwait(false);
+                        }
                     })
                     .Then(() =>
                     {
@@ -155,13 +161,17 @@ namespace Abb.CqrsEs.Internal
         private void ThrowIfDisposed()
         {
             if (_disposed)
+            {
                 throw new ObjectDisposedException(nameof(EventStore));
+            }
         }
 
         private static void CheckAggregateIdOrThrow(Guid aggregateId)
         {
             if (aggregateId == default || aggregateId == Guid.Empty)
+            {
                 throw ExceptionHelper.ArgumentMustNotBeNullOrDefault(nameof(aggregateId));
+            }
         }
 
         private class AggregateEventStream
@@ -186,10 +196,14 @@ namespace Abb.CqrsEs.Internal
                 using (await _asyncLock.Lock(cancellationToken))
                 {
                     if (_processingTask.IsCanceled)
+                    {
                         throw new TaskCanceledException();
+                    }
 
                     if (_processingTask.IsFaulted)
+                    {
                         throw _processingTask.Exception?.Flatten() as Exception ?? new InvalidOperationException();
+                    }
 
                     if (_processingTask.IsCompleted)
                     {
@@ -209,7 +223,9 @@ namespace Abb.CqrsEs.Internal
             private async Task PublishEventStream(Event[] events, CancellationToken cancellationToken)
             {
                 if (_tokenSource.IsCancellationRequested)
+                {
                     throw new TaskCanceledException();
+                }
 
                 var registration = cancellationToken.Register(() => _tokenSource.Cancel());
                 try

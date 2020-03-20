@@ -21,7 +21,10 @@ namespace Abb.CqrsEs.Internal
 
         public Event Convert(string payload)
         {
-            if (string.IsNullOrEmpty(payload)) throw ExceptionHelper.ArgumentMustNotBeNullOrEmpty(nameof(payload));
+            if (string.IsNullOrEmpty(payload))
+            {
+                throw ExceptionHelper.ArgumentMustNotBeNullOrEmpty(nameof(payload));
+            }
 
             var @event = (Event)JsonConvert.DeserializeObject(payload, s_deserializerSettings);
             return @event;

@@ -51,9 +51,6 @@ namespace Abb.CqrsEs.Internal
             }
         }
 
-        public object? Invoke(object instance, params object[] arguments)
-        {
-            return _func(instance, arguments);
-        }
+        public object? Invoke(object instance, params object[] arguments) => _func(instance, arguments);
     }
 }

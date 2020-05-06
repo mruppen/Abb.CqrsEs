@@ -31,10 +31,7 @@ namespace Abb.CqrsEs.Internal
             return aggregate;
         }
 
-        public Task Save<T>(T aggregate, CancellationToken token = default) where T : AggregateRoot
-        {
-            return Save(aggregate, aggregate.Version - aggregate.PendingChangesCount, token);
-        }
+        public Task Save<T>(T aggregate, CancellationToken token = default) where T : AggregateRoot => Save(aggregate, aggregate.Version - aggregate.PendingChangesCount, token);
 
         public async Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot
         {

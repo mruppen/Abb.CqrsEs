@@ -190,20 +190,11 @@ namespace Abb.CqrsEs.UnitTests
 
             protected override ILogger Logger => _logger;
 
-            public Task EmitEvent(Event @event)
-            {
-                return Emit(@event, CancellationToken.None);
-            }
+            public Task EmitEvent(Event @event) => Emit(@event, CancellationToken.None);
 
-            private void Handle(Event1 @event)
-            {
-                Event1Invocations++;
-            }
+            private void Handle(Event1 @event) => Event1Invocations++;
 
-            private void Apply(Event2 @event, CancellationToken token)
-            {
-                Event2Invocations++;
-            }
+            private void Apply(Event2 @event, CancellationToken token) => Event2Invocations++;
 
             private Task Handle(Event3 @event)
             {

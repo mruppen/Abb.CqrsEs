@@ -31,9 +31,6 @@ namespace Abb.CqrsEs.Internal
         }
 
 
-        public string Convert(Event @event)
-        {
-            return JsonConvert.SerializeObject(@event ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(@event)), s_serializerSettings);
-        }
+        public string Convert(Event @event) => JsonConvert.SerializeObject(@event ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(@event)), s_serializerSettings);
     }
 }

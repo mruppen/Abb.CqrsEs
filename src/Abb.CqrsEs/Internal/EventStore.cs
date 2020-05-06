@@ -25,10 +25,7 @@ namespace Abb.CqrsEs.Internal
             InsertPendingEvents().GetAwaiter().GetResult();
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-        }
+        public void Dispose() => Dispose(true);
 
         public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence eventPersistence, CancellationToken token = default)
             => GetEvents(aggregateId, AggregateRoot.InitialVersion, eventPersistence, token);

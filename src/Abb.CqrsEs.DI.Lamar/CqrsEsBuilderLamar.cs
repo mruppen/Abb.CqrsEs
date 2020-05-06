@@ -12,19 +12,16 @@ namespace Abb.CqrsEs.DI.Lamar
         {
         }
 
-        protected override void RegisterEventHandlers()
-        {
-            _services.Scan(scan =>
-            {
-                scan.AssembliesAndExecutablesFromApplicationBaseDirectory(a => !a.IsDynamic);
+        protected override void RegisterEventHandlers() => _services.Scan(scan =>
+                                                         {
+                                                             scan.AssembliesAndExecutablesFromApplicationBaseDirectory(a => !a.IsDynamic);
 
-                scan.AddAllTypesOf(typeof(IEventHandler<>));
-                scan.AddAllTypesOf(typeof(ICommandHandler<>));
+                                                             scan.AddAllTypesOf(typeof(IEventHandler<>));
+                                                             scan.AddAllTypesOf(typeof(ICommandHandler<>));
 
-                scan.With(new Convention(typeof(IEventHandler<>)));
-                scan.With(new Convention(typeof(ICommandHandler<>)));
-            });
-        }
+                                                             scan.With(new Convention(typeof(IEventHandler<>)));
+                                                             scan.With(new Convention(typeof(ICommandHandler<>)));
+                                                         });
 
         private class Convention : IRegistrationConvention
         {

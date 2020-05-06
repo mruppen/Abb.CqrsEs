@@ -224,10 +224,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 return Task.FromResult(false);
             }
 
-            public Task<IEnumerable<IGrouping<Guid, Event>>> GetAll(CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult(CachedEvents.Values.SelectMany(e => e).GroupBy(e => e.AggregateId));
-            }
+            public Task<IEnumerable<IGrouping<Guid, Event>>> GetAll(CancellationToken cancellationToken = default) => Task.FromResult(CachedEvents.Values.SelectMany(e => e).GroupBy(e => e.AggregateId));
         }
 
         private class SimpleEventPublisher : IEventPublisher
@@ -262,17 +259,11 @@ namespace Abb.CqrsEs.UnitTests.Internal
 
             public Event[] PersistedEvents { get { return _persistedEvents.ToArray(); } }
 
-            public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default)
-            {
-                return _persistedEvents.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
+            public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default) => _persistedEvents.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
                                        .ToArray()
                                        .AsTask();
-            }
 
-            public async Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default)
-            {
-                return (await Get(aggregateId)).LastOrDefault();
-            }
+            public async Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default) => (await Get(aggregateId)).LastOrDefault();
 
             public Task Save(IEnumerable<Event> events, CancellationToken token = default)
             {

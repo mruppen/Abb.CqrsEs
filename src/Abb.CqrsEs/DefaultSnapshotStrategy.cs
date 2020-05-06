@@ -6,10 +6,7 @@ namespace Abb.CqrsEs
     {
         public const int MinimumEventsBetweenSnapshots = 20;
 
-        public bool IsSnapshottable(Type aggregateRootType)
-        {
-            return aggregateRootType.ImplementsInterface<ISnapshottable>();
-        }
+        public bool IsSnapshottable(Type aggregateRootType) => aggregateRootType.ImplementsInterface<ISnapshottable>();
 
         public bool TakeSnapshot<T>(T aggregateRoot) where T : AggregateRoot
         {

@@ -1,13 +1,12 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 
 namespace Abb.CqrsEs
 {
     public interface ISnapshotStore
     {
-        Task Save(ISnapshot snapshot, CancellationToken token = default);
+        Task<ISnapshot?> Get(string aggregateId, CancellationToken token = default);
 
-        Task<ISnapshot> Get(Guid id, CancellationToken token = default);
+        Task Save(ISnapshot snapshot, CancellationToken token = default);
     }
 }

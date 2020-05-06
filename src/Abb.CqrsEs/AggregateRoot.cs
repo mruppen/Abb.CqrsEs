@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Abb.CqrsEs.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Abb.CqrsEs
@@ -148,10 +149,7 @@ namespace Abb.CqrsEs
             return DoEmit(() => ConvertToAsyncEnumerable(createEventSynchronized()), token);
         }
 
-        protected Task Emit(Func<IAsyncEnumerable<Event>> createEventsSynchronized, CancellationToken token = default)
-        {
-            return DoEmit(createEventsSynchronized, token);
-        }
+        protected Task Emit(Func<IAsyncEnumerable<Event>> createEventsSynchronized, CancellationToken token = default) => DoEmit(createEventsSynchronized, token);
 
         protected Task Emit(Func<Task<IEnumerable<Event>>> createEventsSynchronized, CancellationToken token = default)
         {
@@ -163,15 +161,9 @@ namespace Abb.CqrsEs
             return DoEmit(() => ConvertToAsyncEnumerable(createEventsSynchronized()), token);
         }
 
-        protected Task Emit<TEvent>(TEvent @event, CancellationToken token = default) where TEvent : Event
-        {
-            return DoEmit(() => ConvertToAsyncEnumerable(Task.FromResult<Event>(@event)), token);
-        }
+        protected Task Emit<TEvent>(TEvent @event, CancellationToken token = default) where TEvent : Event => DoEmit(() => ConvertToAsyncEnumerable(Task.FromResult<Event>(@event)), token);
 
-        protected Task Emit(IEnumerable<Event> events, CancellationToken token = default)
-        {
-            return DoEmit(() => ConvertToAsyncEnumerable(Task.FromResult(events)), token);
-        }
+        protected Task Emit(IEnumerable<Event> events, CancellationToken token = default) => DoEmit(() => ConvertToAsyncEnumerable(Task.FromResult(events)), token);
 
         protected void ThrowIfExpectedVersionIsInvalid(ICommand command) => ThrowIfExpectedVersionIsInvalid(command?.ExpectedVersion ?? InitialVersion);
 
@@ -183,13 +175,10 @@ namespace Abb.CqrsEs
             }
         }
 
-        private static bool CheckParameterType(Type expectedType, Type parameterType)
-        {
-            return expectedType.IsAssignableFrom(parameterType)
+        private static bool CheckParameterType(Type expectedType, Type parameterType) => expectedType.IsAssignableFrom(parameterType)
                 && !parameterType.IsInterface
                 && !parameterType.IsAbstract
                 && !parameterType.IsGenericParameter;
-        }
 
         private static Task<IEnumerable<T>> GetEnumerableTaskResult<T>(T @event)
             => Task.FromResult<IEnumerable<T>>(new[] { @event });

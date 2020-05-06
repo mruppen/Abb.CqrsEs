@@ -46,19 +46,10 @@ namespace Abb.CqrsEs.UnitTests.Common
             s_setAggregateIdAction(this, aggregateId);
         }
 
-        public void SetVersion(int version)
-        {
-            s_setVersionAction(this, version);
-        }
+        public void SetVersion(int version) => s_setVersionAction(this, version);
 
-        public void SetAggregateId(Guid aggregateId)
-        {
-            s_setAggregateIdAction(this, aggregateId);
-        }
+        public void SetAggregateId(Guid aggregateId) => s_setAggregateIdAction(this, aggregateId);
 
-        public void SetTimestamp(DateTimeOffset dateTime)
-        {
-            s_setTimestampAction(this, dateTime);
-        }
+        public void SetTimestamp(DateTimeOffset dateTime) => s_setTimestampAction(this, dateTime);
     }
 }

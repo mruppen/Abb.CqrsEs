@@ -190,12 +190,9 @@ namespace Abb.CqrsEs.DI
             return this;
         }
 
-        private IEnumerable<Type> GetAllExportedTypes()
-        {
-            return AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic)
+        private IEnumerable<Type> GetAllExportedTypes() => AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic)
                 .SelectMany(a => a.ExportedTypes)
                 .Where(t => !t.IsAbstract && !t.IsInterface);
-        }
 
         private IEnumerable<Type> GetGenericInterfaceImplementations(TypeInfo type, Type @interface)
         {

@@ -33,15 +33,9 @@ namespace Abb.CqrsEs.Internal
             return LoadFromSnapshot(aggregateId, _aggregateFactory.CreateAggregate<T>(), token);
         }
 
-        public Task Save<T>(T aggregate, CancellationToken token = default) where T : AggregateRoot
-        {
-            return DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, token), token);
-        }
+        public Task Save<T>(T aggregate, CancellationToken token = default) where T : AggregateRoot => DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, token), token);
 
-        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot
-        {
-            return DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, expectedVersion, token), token);
-        }
+        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot => DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, expectedVersion, token), token);
 
         private Task DoSaveAsync<T>(T aggregate, Func<Task> saveFunc, CancellationToken token) where T : AggregateRoot
         {

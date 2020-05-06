@@ -5,9 +5,6 @@ namespace Abb.CqrsEs.Internal
 {
     public class DefaultEventPublisher : IEventPublisher
     {
-        public Task Publish(Event @event, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task Publish(Event @event, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

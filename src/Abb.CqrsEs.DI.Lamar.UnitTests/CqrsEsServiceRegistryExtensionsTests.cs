@@ -152,59 +152,32 @@ namespace Abb.CqrsEs.DI.UnitTests
 
     public class DummyEventCache : IEventCache
     {
-        public Task Add(Event @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Add(Event @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<bool> Delete(Event @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<bool> Delete(Event @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<IEnumerable<IGrouping<Guid, Event>>> GetAll(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new IGrouping<Guid, Event>[0] as IEnumerable<IGrouping<Guid, Event>>);
-        }
+        public Task<IEnumerable<IGrouping<Guid, Event>>> GetAll(CancellationToken cancellationToken = default) => Task.FromResult(new IGrouping<Guid, Event>[0] as IEnumerable<IGrouping<Guid, Event>>);
     }
 
     public class DummyEventPersistence : IEventPersistence
     {
-        public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Event[]> Get(Guid aggregateId, int fromVersion = 0, CancellationToken token = default) => throw new NotImplementedException();
 
-        public Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<Event> GetLastOrDefault(Guid aggregateId, CancellationToken token = default) => throw new NotImplementedException();
 
-        public Task Save(IEnumerable<Event> events, CancellationToken token = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Save(IEnumerable<Event> events, CancellationToken token = default) => throw new NotImplementedException();
     }
 
     public class DummyEventPublisher : IEventPublisher
     {
-        public Task Publish(Event @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Publish(Event @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     public class DummySnapshotStore : ISnapshotStore
     {
-        public Task<ISnapshot> Get(Guid id, CancellationToken token = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<ISnapshot> Get(Guid id, CancellationToken token = default) => throw new NotImplementedException();
 
-        public Task Save(ISnapshot snapshot, CancellationToken token = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Save(ISnapshot snapshot, CancellationToken token = default) => throw new NotImplementedException();
     }
 
     public class TestCommand : Command
@@ -216,18 +189,12 @@ namespace Abb.CqrsEs.DI.UnitTests
 
     public class ClosedCommandHandler : ICommandHandler<TestCommand>
     {
-        public Task Process(TestCommand command, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Process(TestCommand command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     public class OpenCommandHandler<T> : ICommandHandler<T> where T : ICommand
     {
-        public Task Process(T command, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Process(T command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     public class TestEvent1 : Event
@@ -246,30 +213,18 @@ namespace Abb.CqrsEs.DI.UnitTests
 
     public class SingleClosedEventHandler : IEventHandler<TestEvent1>
     {
-        public Task Handle(TestEvent1 @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Handle(TestEvent1 @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     public class MultipleClosedEventHandler : IEventHandler<TestEvent1>, IEventHandler<TestEvent2>
     {
-        public Task Handle(TestEvent2 @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Handle(TestEvent2 @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task Handle(TestEvent1 @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Handle(TestEvent1 @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     public class OpenEventHandler<T> : IEventHandler<T> where T : IEvent
     {
-        public Task Handle(T @event, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public Task Handle(T @event, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 }

@@ -13,9 +13,6 @@ namespace Abb.CqrsEs.Internal
             _createAggregateRootDelegate = createAggregateRootDelegate ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(createAggregateRootDelegate));
         }
 
-        public T CreateAggregate<T>() where T : AggregateRoot
-        {
-            return (T)_createAggregateRootDelegate(typeof(T));
-        }
+        public T CreateAggregate<T>() where T : AggregateRoot => (T)_createAggregateRootDelegate(typeof(T));
     }
 }

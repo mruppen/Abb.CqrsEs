@@ -101,10 +101,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 _logger = logger;
             }
 
-            public T CreateAggregate<T>() where T : AggregateRoot
-            {
-                return (T)Activator.CreateInstance(typeof(T), _logger);
-            }
+            public T CreateAggregate<T>() where T : AggregateRoot => (T)Activator.CreateInstance(typeof(T), _logger);
         }
 
         private class Aggregate : AggregateRoot
@@ -141,38 +138,23 @@ namespace Abb.CqrsEs.UnitTests.Internal
 
             protected override ILogger Logger => _logger;
 
-            public Task EmitEvent(Event @event)
-            {
-                return Emit(@event, CancellationToken.None);
-            }
+            public Task EmitEvent(Event @event) => Emit(@event, CancellationToken.None);
 
-            private void Handle(Event1 @event)
-            {
-                Event1Invocations++;
-            }
+            private void Handle(Event1 @event) => Event1Invocations++;
 
-            private void Apply(Event2 @event)
-            {
-                Event2Invocations++;
-            }
+            private void Apply(Event2 @event) => Event2Invocations++;
         }
 
         private class EventStore : IEventStore
         {
             public IList<Event> Events { get; } = new List<Event>();
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
-            {
-                return GetEvents(aggregateId, -1, _, token);
-            }
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence _, CancellationToken token = default) => GetEvents(aggregateId, -1, _, token);
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence _, CancellationToken token = default)
-            {
-                return Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
+            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence _, CancellationToken token = default) => Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
                               .OrderBy(e => e.Version)
                               .AsEnumerable()
                               .AsTask();
-            }
 
             public async Task<int> GetVersion(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
             {
@@ -199,10 +181,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
 
         private class EventPublisher : IEventPublisher
         {
-            public Task Publish(Event @event, CancellationToken cancellationToken = default)
-            {
-                return Task.CompletedTask;
-            }
+            public Task Publish(Event @event, CancellationToken cancellationToken = default) => Task.CompletedTask;
         }
 
         private class Event1 : EventWrapper

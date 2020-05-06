@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Abb.CqrsEs.Internal;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Abb.CqrsEs.Internal;
-using Microsoft.Extensions.Logging;
 
 namespace Abb.CqrsEs
 {
@@ -180,9 +180,6 @@ namespace Abb.CqrsEs
                 && !parameterType.IsAbstract
                 && !parameterType.IsGenericParameter;
 
-        private static Task<IEnumerable<T>> GetEnumerableTaskResult<T>(T @event)
-            => Task.FromResult<IEnumerable<T>>(new[] { @event });
-
         private static bool IsEventHandler(MethodInfo methodInfo)
         {
             if (methodInfo == null)
@@ -197,9 +194,7 @@ namespace Abb.CqrsEs
             }
 
             var eventTypeParameterOk = CheckParameterType(typeof(Event), parameters[0].ParameterType);
-            var cancellationTokenParameterOk = parameters.Length == 2
-                ? CheckParameterType(typeof(CancellationToken), parameters[1].ParameterType)
-                : true;
+            var cancellationTokenParameterOk = parameters.Length != 2 || CheckParameterType(typeof(CancellationToken), parameters[1].ParameterType);
 
             return eventTypeParameterOk && cancellationTokenParameterOk;
         }
@@ -251,15 +246,7 @@ namespace Abb.CqrsEs
 
         private Task InvokeAsyncHandler(CompiledMethodInfo handler, Event @event, CancellationToken token)
         {
-            object? result = null;
-            if (handler.ParameterTypes.Length == 2)
-            {
-                result = handler.Invoke(this, @event, token);
-            }
-            else
-            {
-                result = handler.Invoke(this, @event);
-            }
+            var result = handler.ParameterTypes.Length == 2 ? handler.Invoke(this, @event, token) : handler.Invoke(this, @event);
             return result == null ? Task.FromResult(false) : (Task)result;
         }
 

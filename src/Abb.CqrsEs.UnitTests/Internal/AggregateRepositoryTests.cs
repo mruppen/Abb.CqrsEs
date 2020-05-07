@@ -1,4 +1,5 @@
-﻿using Abb.CqrsEs.UnitTests.Common;
+﻿using Abb.CqrsEs.Internal;
+using Abb.CqrsEs.UnitTests.Common;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
     public class AggregateRepositoryTests
     {
         private readonly int _numberOfEvents = 10;
+        private readonly string _aggregateId = "Aggregate";
         private readonly ITestOutputHelper _outputHelper;
 
         public AggregateRepositoryTests(ITestOutputHelper outputHelper)
@@ -23,13 +25,13 @@ namespace Abb.CqrsEs.UnitTests.Internal
         [Fact]
         public async Task AggregateRepository_detect_concurrency_exception()
         {
-            var aggregateId = IdentityGenerator.GetNewIdentity();
-            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents), GetLogger<Aggregate>());
+            var aggregateId = _aggregateId;
+            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(_numberOfEvents), GetLogger<Aggregate>());
 
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
+            eventStore.EventStreams.Add(new EventStream(aggregateId, new[] { new Event1(Guid.NewGuid(), 1) }));
 
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
@@ -38,9 +40,10 @@ namespace Abb.CqrsEs.UnitTests.Internal
         [Fact]
         public async Task AggregateRepository_get_restores_correct_state()
         {
-            var aggregateId = IdentityGenerator.GetNewIdentity();
+            var aggregateId = _aggregateId;
             var eventStore = new EventStore();
-            GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
+            var eventStream = new EventStream(aggregateId, GenerateRandomizedEvents(_numberOfEvents).ToArray());
+            eventStore.EventStreams.Add(eventStream);
 
             var AggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
 
@@ -53,8 +56,8 @@ namespace Abb.CqrsEs.UnitTests.Internal
         [Fact]
         public async Task AggregateRepository_save_pending_changes()
         {
-            var aggregateId = IdentityGenerator.GetNewIdentity();
-            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents), GetLogger<Aggregate>());
+            var aggregateId = _aggregateId;
+            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(_numberOfEvents), GetLogger<Aggregate>());
 
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
@@ -63,10 +66,10 @@ namespace Abb.CqrsEs.UnitTests.Internal
             await repository.Save(aggregate, AggregateRoot.InitialVersion);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
-            Assert.Equal(_numberOfEvents, eventStore.Events.Where(e => e.AggregateId == aggregateId).Count());
+            Assert.Equal(_numberOfEvents, eventStore.EventStreams.Single(e => e.AggregateId == aggregateId).Events.Count());
         }
 
-        private IEnumerable<Event> GenerateRandomizedEvents(string aggregateId, int numberOfRandomizedEvents)
+        private IEnumerable<Event> GenerateRandomizedEvents(int numberOfRandomizedEvents)
         {
             var random = new Random();
             for (int i = 0; i < numberOfRandomizedEvents; i++)
@@ -74,9 +77,9 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 var number = random.Next(1, 20);
                 var nextVersion = i + 1;
                 if (number <= 10)
-                    yield return new Event1(Guid.NewGuid(), nextVersion, aggregateId);
+                    yield return new Event1(Guid.NewGuid(), nextVersion);
                 else
-                    yield return new Event2(Guid.NewGuid(), nextVersion, aggregateId);
+                    yield return new Event2(Guid.NewGuid(), nextVersion);
             }
         }
 
@@ -112,7 +115,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public Aggregate(string id, IEnumerable<Event> events, ILogger logger)
             {
                 Id = id;
-                events.ForEachAsync(e => Emit(e, CancellationToken.None)).GetAwaiter().GetResult();
+                events.ForEach(e => Emit(e));
                 _logger = logger;
             }
 
@@ -121,21 +124,6 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public int Event2Invocations { get; set; }
 
             protected override ILogger Logger => _logger;
-
-            public Task EmitEvent(Event @event)
-            {
-                return Emit(@event, CancellationToken.None);
-            }
-
-            private void Apply(Event2 @event)
-            {
-                Event2Invocations++;
-            }
-
-            private void Handle(Event1 @event)
-            {
-                Event1Invocations++;
-            }
         }
 
         private class AggregateFactory : IAggregateFactory
@@ -155,55 +143,50 @@ namespace Abb.CqrsEs.UnitTests.Internal
 
         private class Event1 : EventWrapper
         {
-            public Event1(Guid correlationId, int version, string aggregateId)
-                : base(correlationId, version, aggregateId)
+            public Event1(Guid correlationId, int version)
+                : base(correlationId, version)
             {
             }
         }
 
         private class Event2 : EventWrapper
         {
-            public Event2(Guid correlationId, int version, string aggregateId)
-                : base(correlationId, version, aggregateId)
+            public Event2(Guid correlationId, int version)
+                : base(correlationId, version)
             {
             }
         }
 
         private class EventStore : IEventStore
         {
-            public IList<Event> Events { get; } = new List<Event>();
+            public IList<EventStream> EventStreams { get; } = new List<EventStream>();
 
-            public Task<IEnumerable<Event>> GetEventStream(string aggregateId, int fromVersion, CancellationToken token = default)
-            {
-                return Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
-                              .OrderBy(e => e.Version)
-                              .AsEnumerable()
-                              .AsTask();
-            }
+            public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken token = default)
+                => new EventStream(aggregateId, EventStreams.Where(e => e.AggregateId == aggregateId)
+                    .SelectMany(e => e.Events)
+                    .Where(e => e.Version >= fromVersion)
+                    .OrderBy(e => e.Version)
+                    .ToArray())
+                    .AsTask();
 
-            public Task<IEnumerable<Event>> GetEventStream(string aggregateId, CancellationToken token = default)
-            {
-                return GetEventStream(aggregateId, -1, token);
-            }
+            public Task<EventStream> GetEventStream(string aggregateId, CancellationToken token = default) => GetEventStream(aggregateId, -1, token);
 
-            public async Task<int> GetVersion(string aggregateId, CancellationToken token = default)
-            {
-                var lastEvent = (await GetEventStream(aggregateId)).LastOrDefault();
-                return lastEvent != null
-                    ? lastEvent.Version
-                    : 0;
-            }
+            public async Task<int> GetVersion(string aggregateId, CancellationToken token = default) => (await GetEventStream(aggregateId))?.ToVersion ?? AggregateRoot.InitialVersion;
 
-            public Task SaveAndPublish(EventStream eventStream, Func<CancellationToken, Task> beforePublish, CancellationToken token = default)
+            public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken token = default)
             {
-                foreach (var @event in eventStream.Events)
+                var currentStream = EventStreams.SingleOrDefault(e => e.AggregateId == eventStream.AggregateId);
+                if (currentStream == null)
                 {
-                    if (Events.Any(e => e.AggregateId == @event.AggregateId && e.Version == @event.Version))
-                        throw new InvalidOperationException();
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, eventStream.Events.ToArray()));
                 }
-
-                eventStream.Events.ForEach(Events.Add);
-                return beforePublish(token);
+                else
+                {
+                    EventStreams.Remove(currentStream);
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, currentStream.Events.Concat(eventStream.Events).ToArray()));
+                }
+                commit();
+                return Task.CompletedTask;
             }
         }
     }

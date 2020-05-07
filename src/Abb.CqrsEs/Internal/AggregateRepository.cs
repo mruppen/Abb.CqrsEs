@@ -19,16 +19,16 @@ namespace Abb.CqrsEs.Internal
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<T> Get<T>(string aggregateId, CancellationToken token = default) where T : AggregateRoot
+        public async Task<T> Get<T>(string aggregateId, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             _logger.Debug(() => $"Initializing aggregate of type {typeof(T).Name} with id {aggregateId}");
             var aggregate = _aggregateFactory.CreateAggregate<T>();
-            var eventStream = await _eventStore.GetEventStream(aggregateId, token);
+            var eventStream = await _eventStore.GetEventStream(aggregateId, cancellationToken);
             aggregate.Load(eventStream);
             return aggregate;
         }
 
-        public async Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot
+        public async Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             if (aggregate == null)
             {
@@ -36,7 +36,7 @@ namespace Abb.CqrsEs.Internal
             }
 
             _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
-            var actualVersion = await _eventStore.GetVersion(aggregate.Id, token);
+            var actualVersion = await _eventStore.GetVersion(aggregate.Id, cancellationToken);
             if (expectedVersion != -1 && actualVersion != expectedVersion)
             {
                 _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
@@ -51,7 +51,7 @@ namespace Abb.CqrsEs.Internal
                     aggregate.CommitChanges();
                     return;
                 }
-                await _eventStore.SaveAndPublish(eventStream, aggregate.CommitChanges, token).ConfigureAwait(false);
+                await _eventStore.SaveAndPublish(eventStream, aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {

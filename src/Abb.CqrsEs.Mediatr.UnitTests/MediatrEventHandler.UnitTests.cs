@@ -38,11 +38,11 @@ namespace Abb.CqrsEs.Mediatr.UnitTests
         {
             public Guid AggregateId => throw new NotImplementedException();
 
-            public int Version => throw new NotImplementedException();
+            public Guid CorrelationId => throw new NotImplementedException();
 
             public DateTimeOffset Timestamp => throw new NotImplementedException();
 
-            public Guid CorrelationId => throw new NotImplementedException();
+            public int Version => throw new NotImplementedException();
         }
 
         private class TestMediatrEventHandler : MediatrEventHandler<TestEvent>

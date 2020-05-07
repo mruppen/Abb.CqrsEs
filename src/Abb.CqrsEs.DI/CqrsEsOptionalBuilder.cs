@@ -1,5 +1,4 @@
-﻿using Abb.CqrsEs.Internal;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace Abb.CqrsEs.DI
@@ -7,9 +6,9 @@ namespace Abb.CqrsEs.DI
     internal class CqrsEsOptionalBuilder : ICqrsEsOptionalBuilder
     {
         private readonly ICqrsEsBuilder _cqrsEsBuilder;
-        private Action<Type> _overrideEventConverter;
-        private Action<Type, Type> _enableSnapshots;
         private Action _enableHandlerRegistration;
+        private Action<Type, Type> _enableSnapshots;
+        private Action<Type> _overrideEventConverter;
 
         public CqrsEsOptionalBuilder(ICqrsEsBuilder cqrsEsBuilder, Action<Type> overrideEventConverter, Action<Type, Type> enableSnapshots, Action enableHandlerRegistration)
         {

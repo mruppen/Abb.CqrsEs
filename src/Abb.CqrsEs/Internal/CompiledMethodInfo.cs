@@ -9,18 +9,16 @@ namespace Abb.CqrsEs.Internal
     {
         private readonly Func<object, object[], object?> _func;
 
-        public Type[] ParameterTypes { get; private set; }
-
         public CompiledMethodInfo(MethodInfo methodInfo, Type type)
         {
             if (methodInfo == null)
             {
-                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(methodInfo));
+                throw new ArgumentNullException(nameof(methodInfo));
             }
 
             if (type == null)
             {
-                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(type));
+                throw new ArgumentNullException(nameof(type));
             }
 
             var instanceExpression = Expression.Parameter(typeof(object), "instance");
@@ -50,6 +48,8 @@ namespace Abb.CqrsEs.Internal
                 _func = Expression.Lambda<Func<object, object[], object>>(Expression.Convert(callExpression, typeof(object)), instanceExpression, argumentsExpression).Compile();
             }
         }
+
+        public Type[] ParameterTypes { get; private set; }
 
         public object? Invoke(object instance, params object[] arguments) => _func(instance, arguments);
     }

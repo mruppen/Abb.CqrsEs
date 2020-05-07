@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 
 namespace Abb.CqrsEs
 {
@@ -6,17 +8,16 @@ namespace Abb.CqrsEs
     {
         public const int MinimumEventsBetweenSnapshots = 20;
 
-        public bool IsSnapshottable(Type aggregateRootType) => aggregateRootType.ImplementsInterface<ISnapshottable>();
+        public bool IsSnapshottable(Type aggregateRootType) => aggregateRootType.GetTypeInfo().GetInterfaces().Any(i => i == typeof(ISnapshottable));
 
-        public bool TakeSnapshot<T>(T aggregateRoot) where T : AggregateRoot
+        public bool TakeSnapshot<T>(T aggregateRoot, int pendingChangesCount) where T : AggregateRoot
         {
-            if (!IsSnapshottable(typeof(T)))
+            if (pendingChangesCount == 0)
             {
                 return false;
             }
 
-            var pendingChangesCount = aggregateRoot.PendingChangesCount;
-            if (pendingChangesCount == 0)
+            if (!IsSnapshottable(typeof(T)))
             {
                 return false;
             }

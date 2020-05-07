@@ -6,6 +6,6 @@ namespace Abb.CqrsEs
     {
         bool IsSnapshottable(Type aggregateRootType);
 
-        bool TakeSnapshot<T>(T aggregateRoot) where T : AggregateRoot;
+        bool TakeSnapshot<T>(T aggregateRoot, int pendingChangesCount) where T : AggregateRoot;
     }
 }

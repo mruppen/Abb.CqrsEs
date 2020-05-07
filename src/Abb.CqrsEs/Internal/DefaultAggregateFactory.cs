@@ -10,7 +10,7 @@ namespace Abb.CqrsEs.Internal
 
         public DefaultAggregateFactory(CreateAggregateRootDelegate createAggregateRootDelegate)
         {
-            _createAggregateRootDelegate = createAggregateRootDelegate ?? throw ExceptionHelper.ArgumentMustNotBeNull(nameof(createAggregateRootDelegate));
+            _createAggregateRootDelegate = createAggregateRootDelegate ?? throw new ArgumentNullException(nameof(createAggregateRootDelegate));
         }
 
         public T CreateAggregate<T>() where T : AggregateRoot => (T)_createAggregateRootDelegate(typeof(T));

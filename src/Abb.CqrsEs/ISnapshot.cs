@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Abb.CqrsEs
+﻿namespace Abb.CqrsEs
 {
     public interface ISnapshot
     {

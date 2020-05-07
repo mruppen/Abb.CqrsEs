@@ -15,9 +15,9 @@ namespace Abb.CqrsEs.DI
         protected readonly TServices _services;
         private readonly Lazy<ICqrsEsOptionalBuilder> _optionalBuilder = new Lazy<ICqrsEsOptionalBuilder>();
 
+        private bool _enableHandlerRegistration;
         private Type _eventCacheType, _eventPersistenceType, _eventPublisherType, _snapshotStoreType, _snapshotStrategyType;
         private Type _eventConverterType = typeof(EventConverter);
-        private bool _enableHandlerRegistration;
 
         public CqrsEsBuilder(TServices services)
         {
@@ -174,6 +174,27 @@ namespace Abb.CqrsEs.DI
             return this;
         }
 
+        private IEnumerable<Type> GetAllExportedTypes() => AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic)
+                .SelectMany(a => a.ExportedTypes)
+                .Where(t => !t.IsAbstract && !t.IsInterface);
+
+        private IEnumerable<Type> GetClosedGenericInterface(Type[] implementedInterfaces, Type @interface)
+            => implementedInterfaces.Where(t => t.IsGenericType && !t.IsGenericTypeDefinition && t.GetGenericTypeDefinition() == @interface);
+
+        private IEnumerable<Type> GetGenericInterfaceImplementations(TypeInfo type, Type @interface)
+        {
+            if (type.IsGenericTypeDefinition)
+            {
+                return type.ImplementedInterfaces.Where(i => i.IsGenericType && !i.IsGenericTypeDefinition && i.GetGenericTypeDefinition() == @interface).Select(i => i.GetGenericTypeDefinition());
+            }
+
+            var interfaces = type.ImplementedInterfaces.ToArray();
+            return GetClosedGenericInterface(interfaces, @interface).Concat(GetOpenGenericInterfaces(interfaces, @interface)).Distinct();
+        }
+
+        private IEnumerable<Type> GetOpenGenericInterfaces(Type[] implementedInterfaces, Type @interface)
+            => implementedInterfaces.Where(t => t.IsGenericTypeDefinition && t == @interface);
+
         private ICqrsEsBuilder OverrideEventConverter(Type type)
         {
             if (type == null)
@@ -189,26 +210,5 @@ namespace Abb.CqrsEs.DI
             _eventConverterType = type;
             return this;
         }
-
-        private IEnumerable<Type> GetAllExportedTypes() => AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic)
-                .SelectMany(a => a.ExportedTypes)
-                .Where(t => !t.IsAbstract && !t.IsInterface);
-
-        private IEnumerable<Type> GetGenericInterfaceImplementations(TypeInfo type, Type @interface)
-        {
-            if (type.IsGenericTypeDefinition)
-            {
-                return type.ImplementedInterfaces.Where(i => i.IsGenericType && !i.IsGenericTypeDefinition && i.GetGenericTypeDefinition() == @interface).Select(i => i.GetGenericTypeDefinition());
-            }
-
-            var interfaces = type.ImplementedInterfaces.ToArray();
-            return GetClosedGenericInterface(interfaces, @interface).Concat(GetOpenGenericInterfaces(interfaces, @interface)).Distinct();
-        }
-
-        private IEnumerable<Type> GetClosedGenericInterface(Type[] implementedInterfaces, Type @interface)
-            => implementedInterfaces.Where(t => t.IsGenericType && !t.IsGenericTypeDefinition && t.GetGenericTypeDefinition() == @interface);
-
-        private IEnumerable<Type> GetOpenGenericInterfaces(Type[] implementedInterfaces, Type @interface)
-            => implementedInterfaces.Where(t => t.IsGenericTypeDefinition && t == @interface);
     }
 }

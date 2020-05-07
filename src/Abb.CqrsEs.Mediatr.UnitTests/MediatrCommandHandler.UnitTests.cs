@@ -37,9 +37,9 @@ namespace Abb.CqrsEs.Mediatr.UnitTests
 
         private class TestCommand : IMediatrCommand
         {
-            public int ExpectedVersion => throw new NotImplementedException();
-
             public Guid CorrelationId => throw new NotImplementedException();
+
+            public int ExpectedVersion => throw new NotImplementedException();
         }
 
         private class TestMediatrCommandHandler : MediatrCommandHandler<TestCommand>

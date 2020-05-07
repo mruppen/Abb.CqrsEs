@@ -1,6 +1,4 @@
-﻿using Abb.CqrsEs.Internal;
-using Abb.CqrsEs.UnitTests.Common;
-using System;
+﻿using System;
 using Xunit;
 
 namespace Abb.CqrsEs.UnitTests.Internal

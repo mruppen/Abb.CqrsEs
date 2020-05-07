@@ -4,9 +4,9 @@ namespace Abb.CqrsEs.UnitTests.Common
 {
     public abstract class EventWrapper : Event
     {
-        private static Action<Event, int> s_setVersionAction;
-        private static Action<Event, Guid> s_setAggregateIdAction;
         private static readonly Action<Event, DateTimeOffset> s_setTimestampAction;
+        private static Action<Event, Guid> s_setAggregateIdAction;
+        private static Action<Event, int> s_setVersionAction;
 
         static EventWrapper()
         {
@@ -46,10 +46,10 @@ namespace Abb.CqrsEs.UnitTests.Common
             s_setAggregateIdAction(this, aggregateId);
         }
 
-        public void SetVersion(int version) => s_setVersionAction(this, version);
-
         public void SetAggregateId(Guid aggregateId) => s_setAggregateIdAction(this, aggregateId);
 
         public void SetTimestamp(DateTimeOffset dateTime) => s_setTimestampAction(this, dateTime);
+
+        public void SetVersion(int version) => s_setVersionAction(this, version);
     }
 }

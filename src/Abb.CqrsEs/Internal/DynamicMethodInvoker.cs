@@ -8,19 +8,19 @@ namespace Abb.CqrsEs.Internal
     internal static class DynamicMethodInvoker
     {
         private const BindingFlags _bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        private static volatile Dictionary<int, CompiledMethodInfo?> s_cachedMembers = new Dictionary<int, CompiledMethodInfo?>();
         private static readonly object s_lock = new object();
+        private static volatile Dictionary<int, CompiledMethodInfo?> s_cachedMembers = new Dictionary<int, CompiledMethodInfo?>();
 
         internal static object? Invoke<T>(this T obj, string methodName, params object[] args)
         {
             if (obj == null)
             {
-                throw ExceptionHelper.ArgumentMustNotBeNull(nameof(obj));
+                throw new ArgumentNullException(nameof(obj));
             }
 
             if (string.IsNullOrEmpty(methodName))
             {
-                throw ExceptionHelper.ArgumentMustNotBeNullOrEmpty(nameof(methodName));
+                throw new ArgumentNullException(nameof(methodName));
             }
 
             var type = obj.GetType();
@@ -49,19 +49,6 @@ namespace Abb.CqrsEs.Internal
                 s_cachedMembers = dict;
                 return method?.Invoke(obj, args);
             }
-        }
-
-        private static int Hash(Type type, string methodname, object[] args)
-        {
-            var hash = 23;
-            hash = hash * 31 + type.GetHashCode();
-            hash = hash * 31 + methodname.GetHashCode();
-            for (var index = 0; index < args.Length; index++)
-            {
-                var argtype = args[index].GetType();
-                hash = hash * 31 + argtype.GetHashCode();
-            }
-            return hash;
         }
 
         private static Type[] GetArgTypes(object[] args)
@@ -96,6 +83,19 @@ namespace Abb.CqrsEs.Internal
 
                 type = t;
             }
+        }
+
+        private static int Hash(Type type, string methodname, object[] args)
+        {
+            var hash = 23;
+            hash = hash * 31 + type.GetHashCode();
+            hash = hash * 31 + methodname.GetHashCode();
+            for (var index = 0; index < args.Length; index++)
+            {
+                var argtype = args[index].GetType();
+                hash = hash * 31 + argtype.GetHashCode();
+            }
+            return hash;
         }
 
         private static bool Matches(this Type[] arr, Type[] args)

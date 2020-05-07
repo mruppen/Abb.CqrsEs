@@ -1,5 +1,4 @@
 ﻿using System;
-using Newtonsoft.Json;
 
 namespace Abb.CqrsEs
 {
@@ -10,16 +9,10 @@ namespace Abb.CqrsEs
             CorrelationId = correlationId;
         }
 
-        [JsonProperty("aggregateId")]
-        public string AggregateId { get; internal set; } = string.Empty;
+        public Guid CorrelationId { get; internal set; }
 
-        [JsonProperty("version")]
-        public int Version { get; internal set; }
-
-        [JsonProperty("timestamp")]
         public DateTimeOffset Timestamp { get; internal set; }
 
-        [JsonProperty("correlationId")]
-        public Guid CorrelationId { get; internal set; }
+        public int Version { get; internal set; }
     }
 }

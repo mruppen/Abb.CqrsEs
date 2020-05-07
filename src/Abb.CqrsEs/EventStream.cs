@@ -1,14 +1,15 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Abb.CqrsEs
 {
     public class EventStream
     {
-        public EventStream(string aggregateId, int fromVersion, Event[] events)
+        public EventStream(string aggregateId, Event[] events)
         {
             AggregateId = aggregateId;
-            FromVersion = fromVersion;
-            ToVersion = fromVersion + events.Length;
+            FromVersion = events.FirstOrDefault()?.Version ?? AggregateRoot.InitialVersion;
+            ToVersion = FromVersion + events.Length;
             Events = events;
         }
 

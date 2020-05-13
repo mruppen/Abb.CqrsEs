@@ -2,17 +2,22 @@
 
 namespace Abb.CqrsEs
 {
-    public abstract class Event : IEvent
+    public class Event : IEvent
     {
-        protected Event(Guid correlationId)
+        public Event(Guid correlationId, object data, DateTimeOffset timestamp, int version)
         {
             CorrelationId = correlationId;
+            Data = data;
+            Timestamp = timestamp;
+            Version = version;
         }
 
-        public Guid CorrelationId { get; internal set; }
+        public Guid CorrelationId { get; }
 
-        public DateTimeOffset Timestamp { get; internal set; }
+        public object Data { get; }
 
-        public int Version { get; internal set; }
+        public DateTimeOffset Timestamp { get; }
+
+        public int Version { get; }
     }
 }

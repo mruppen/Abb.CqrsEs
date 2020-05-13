@@ -21,37 +21,37 @@ namespace Abb.CqrsEs.Internal
             _snapshotStrategy = snapshotStrategy ?? throw new ArgumentNullException(nameof(snapshotStrategy));
         }
 
-        public Task<T> Get<T>(string aggregateId, CancellationToken token = default) where T : AggregateRoot
+        public Task<T> Get<T>(string aggregateId, CancellationToken cancellationToken = default) where T : AggregateRoot
             => !_snapshotStrategy.IsSnapshottable(typeof(T))
-                ? _decoratedRepository.Get<T>(aggregateId, token)
-                : LoadFromSnapshot(aggregateId, _aggregateFactory.CreateAggregate<T>(), token);
+                ? _decoratedRepository.Get<T>(aggregateId, cancellationToken)
+                : LoadFromSnapshot(aggregateId, _aggregateFactory.CreateAggregate<T>(), cancellationToken);
 
-        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken token = default) where T : AggregateRoot
-            => DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, expectedVersion, token), token);
+        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
+            => DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, expectedVersion, cancellationToken), cancellationToken);
 
-        private async Task DoSaveAsync<T>(T aggregate, Func<Task> saveFunc, CancellationToken token) where T : AggregateRoot
+        private async Task DoSaveAsync<T>(T aggregate, Func<Task> saveFunc, CancellationToken cancellationToken) where T : AggregateRoot
         {
             var pendingChangesCount = aggregate.PendingChangesCount;
             await saveFunc();
             if (_snapshotStrategy.TakeSnapshot(aggregate, pendingChangesCount))
             {
-                var snapshot = await ((ISnapshottable)aggregate).CreateSnapshot(token);
-                await _snapshotStore.Save(snapshot, token);
+                var snapshot = await ((ISnapshottable)aggregate).CreateSnapshot(cancellationToken);
+                await _snapshotStore.Save(snapshot, cancellationToken);
             }
         }
 
-        private async Task<T> LoadFromSnapshot<T>(string aggregateId, T aggregate, CancellationToken token) where T : AggregateRoot
+        private async Task<T> LoadFromSnapshot<T>(string aggregateId, T aggregate, CancellationToken cancellationToken) where T : AggregateRoot
         {
-            var snapshot = await _snapshotStore.Get(aggregateId, token);
+            var snapshot = await _snapshotStore.Get(aggregateId, cancellationToken);
             if (snapshot != null && aggregate is ISnapshottable snapshottable)
             {
-                await snapshottable.RestoreSnapshot(snapshot, token);
-                var eventStream = await _eventStore.GetEventStream(aggregateId, snapshot.Version + 1, token);
+                await snapshottable.RestoreSnapshot(snapshot, cancellationToken);
+                var eventStream = await _eventStore.GetEventStream(aggregateId, snapshot.Version + 1, cancellationToken);
                 aggregate.Load(eventStream);
                 return aggregate;
             }
 
-            return await _decoratedRepository.Get<T>(aggregateId, token);
+            return await _decoratedRepository.Get<T>(aggregateId, cancellationToken);
         }
     }
 }

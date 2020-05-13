@@ -13,8 +13,8 @@ namespace Abb.CqrsEs.UnitTests.Internal
 {
     public class AggregateRepositoryTests
     {
-        private readonly int _numberOfEvents = 10;
         private readonly string _aggregateId = "Aggregate";
+        private readonly int _numberOfEvents = 10;
         private readonly ITestOutputHelper _outputHelper;
 
         public AggregateRepositoryTests(ITestOutputHelper outputHelper)
@@ -31,7 +31,7 @@ namespace Abb.CqrsEs.UnitTests.Internal
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            eventStore.EventStreams.Add(new EventStream(aggregateId, new[] { new Event1(Guid.NewGuid(), 1) }));
+            eventStore.EventStreams.Add(new EventStream(aggregateId, new[] { new Event(Guid.NewGuid(), new Event1(), DateTimeOffset.UtcNow, 1) }));
 
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
@@ -42,7 +42,12 @@ namespace Abb.CqrsEs.UnitTests.Internal
         {
             var aggregateId = _aggregateId;
             var eventStore = new EventStore();
-            var eventStream = new EventStream(aggregateId, GenerateRandomizedEvents(_numberOfEvents).ToArray());
+            var version = 0;
+            var eventStream = new EventStream(aggregateId, GenerateRandomizedEvents(_numberOfEvents).Select(d =>
+            {
+                version++;
+                return new Event(Guid.NewGuid(), d, DateTimeOffset.UtcNow, version);
+            }).ToArray());
             eventStore.EventStreams.Add(eventStream);
 
             var AggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
@@ -69,17 +74,13 @@ namespace Abb.CqrsEs.UnitTests.Internal
             Assert.Equal(_numberOfEvents, eventStore.EventStreams.Single(e => e.AggregateId == aggregateId).Events.Count());
         }
 
-        private IEnumerable<Event> GenerateRandomizedEvents(int numberOfRandomizedEvents)
+        private IEnumerable<object> GenerateRandomizedEvents(int numberOfRandomizedEvents)
         {
             var random = new Random();
             for (int i = 0; i < numberOfRandomizedEvents; i++)
             {
                 var number = random.Next(1, 20);
-                var nextVersion = i + 1;
-                if (number <= 10)
-                    yield return new Event1(Guid.NewGuid(), nextVersion);
-                else
-                    yield return new Event2(Guid.NewGuid(), nextVersion);
+                yield return number <= 10 ? new Event1() : (object)new Event2();
             }
         }
 
@@ -112,10 +113,10 @@ namespace Abb.CqrsEs.UnitTests.Internal
                 _logger = logger;
             }
 
-            public Aggregate(string id, IEnumerable<Event> events, ILogger logger)
+            public Aggregate(string id, IEnumerable<object> events, ILogger logger)
             {
                 Id = id;
-                events.ForEach(e => Emit(e));
+                events.ForEach(e => Emit(Guid.NewGuid(), e));
                 _logger = logger;
             }
 
@@ -124,6 +125,14 @@ namespace Abb.CqrsEs.UnitTests.Internal
             public int Event2Invocations { get; set; }
 
             protected override ILogger Logger => _logger;
+
+            protected override void When(object @event)
+                => _ = @event switch
+                {
+                    Event1 _ => Event1Invocations++,
+                    Event2 _ => Event2Invocations++,
+                    _ => -1
+                };
         }
 
         private class AggregateFactory : IAggregateFactory
@@ -141,27 +150,15 @@ namespace Abb.CqrsEs.UnitTests.Internal
             }
         }
 
-        private class Event1 : EventWrapper
-        {
-            public Event1(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event1 { }
 
-        private class Event2 : EventWrapper
-        {
-            public Event2(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event2 { }
 
         private class EventStore : IEventStore
         {
             public IList<EventStream> EventStreams { get; } = new List<EventStream>();
 
-            public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken token = default)
+            public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken cancellationToken = default)
                 => new EventStream(aggregateId, EventStreams.Where(e => e.AggregateId == aggregateId)
                     .SelectMany(e => e.Events)
                     .Where(e => e.Version >= fromVersion)
@@ -169,11 +166,11 @@ namespace Abb.CqrsEs.UnitTests.Internal
                     .ToArray())
                     .AsTask();
 
-            public Task<EventStream> GetEventStream(string aggregateId, CancellationToken token = default) => GetEventStream(aggregateId, -1, token);
+            public Task<EventStream> GetEventStream(string aggregateId, CancellationToken cancellationToken = default) => GetEventStream(aggregateId, -1, cancellationToken);
 
-            public async Task<int> GetVersion(string aggregateId, CancellationToken token = default) => (await GetEventStream(aggregateId))?.ToVersion ?? AggregateRoot.InitialVersion;
+            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default) => (await GetEventStream(aggregateId))?.ToVersion ?? AggregateRoot.InitialVersion;
 
-            public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken token = default)
+            public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken cancellationToken = default)
             {
                 var currentStream = EventStreams.SingleOrDefault(e => e.AggregateId == eventStream.AggregateId);
                 if (currentStream == null)

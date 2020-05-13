@@ -1,13 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Abb.CqrsEs.EventStore
 {
-    internal class EventStore : IDisposable, IEventStore
+    public class EventStore : IDisposable, IEventStore
     {
         private readonly IEventPersistence _eventPersistence;
         private readonly IEventPublisher _eventPublisher;
@@ -24,81 +23,90 @@ namespace Abb.CqrsEs.EventStore
         public void Dispose()
         {
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        public Task<IEnumerable<Event>> GetEventStream(string aggregateId, int fromVersion, CancellationToken token = default)
+        public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             CheckAggregateIdOrThrow(aggregateId);
-            _logger.Info(() => $"Getting events of aggregate with id {aggregateId} starting with version {fromVersion}.");
-            try
-            {
-                return _eventPersistence
-                    .Get(aggregateId, fromVersion, token)
-                    .Then(events =>
-                    {
-                        var ensured = events ?? new Event[0];
-                        _logger.Debug(() => $"Retrieved {ensured.Length} events for aggregate {aggregateId}.");
-                        return ensured.AsEnumerable().AsTask();
-                    });
-            }
-            catch (ArgumentException)
-            {
-                throw;
-            }
-            catch (UnknownAggregateIdException)
-            {
-                throw;
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException("Operation could not be completed.", e);
-            }
-        }
 
-        public Task<IEnumerable<Event>> GetEventStream(string aggregateId, CancellationToken token = default)
-                    => GetEventStream(aggregateId, AggregateRoot.InitialVersion, token);
-
-        public async Task<int> GetVersion(string aggregateId, CancellationToken token = default)
-        {
-            ThrowIfDisposed();
-            CheckAggregateIdOrThrow(aggregateId);
-            _logger.Debug(() => $"Getting version of aggregate with id {aggregateId}");
-            try
+            async Task<EventStream> DoGetEventStream()
             {
-                var lastEvent = await _eventPersistence.GetLastOrDefault(aggregateId, token).ConfigureAwait(false);
-                if (lastEvent == null)
+                _logger.Info(() => $"Getting events of aggregate with id {aggregateId} starting with version {fromVersion}.");
+                try
                 {
-                    _logger.Debug(() => $"Aggregate {aggregateId} does not exist and version is {AggregateRoot.InitialVersion}.");
-                    return AggregateRoot.InitialVersion;
+                    var events = await _eventPersistence.Get(aggregateId, fromVersion, cancellationToken).ToArrayAsync().ConfigureAwait(false)
+                        ?? new Event[0];
+                    _logger.Debug(() => $"Retrieved {events.Length} events for aggregate {aggregateId}.");
+                    return new EventStream(aggregateId, events);
                 }
+                catch (ArgumentException)
+                {
+                    throw;
+                }
+                catch (UnknownAggregateIdException)
+                {
+                    throw;
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException("Operation could not be completed.", e);
+                }
+            }
 
-                _logger.Debug(() => $"Aggregate with id {aggregateId} has version {lastEvent.Version}.");
-                return lastEvent.Version;
-            }
-            catch (ArgumentException)
-            {
-                throw;
-            }
-            catch (UnknownAggregateIdException)
-            {
-                throw;
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException("Operation could not be completed.", e);
-            }
+            return DoGetEventStream();
         }
 
-        public Task SaveAndPublish(EventStream eventStream, Func<CancellationToken, Task> commitChanges, CancellationToken cancellationToken = default)
+        public Task<EventStream> GetEventStream(string aggregateId, CancellationToken cancellationToken = default)
+            => GetEventStream(aggregateId, AggregateRoot.InitialVersion, cancellationToken);
+
+        public Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            CheckAggregateIdOrThrow(aggregateId);
+
+            async Task<int> DoGetVersion()
+            {
+                _logger.Debug(() => $"Getting version of aggregate with id {aggregateId}");
+                try
+                {
+                    var lastEvent = await _eventPersistence.GetLastOrDefault(aggregateId, cancellationToken).ConfigureAwait(false);
+                    if (lastEvent == null)
+                    {
+                        _logger.Debug(() => $"Aggregate {aggregateId} does not exist and version is {AggregateRoot.InitialVersion}.");
+                        return AggregateRoot.InitialVersion;
+                    }
+
+                    _logger.Debug(() => $"Aggregate with id {aggregateId} has version {lastEvent.Version}.");
+                    return lastEvent.Version;
+                }
+                catch (ArgumentException)
+                {
+                    throw;
+                }
+                catch (UnknownAggregateIdException)
+                {
+                    throw;
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException("Operation could not be completed.", e);
+                }
+            }
+
+            return DoGetVersion();
+        }
+
+        public Task SaveAndPublish(EventStream eventStream, Action? commit, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (eventStream == null)
@@ -106,32 +114,36 @@ namespace Abb.CqrsEs.EventStore
                 throw new ArgumentNullException(nameof(eventStream));
             }
 
-            _logger.Info(() => $"Saving and publishing events for aggegrate with id {eventStream.AggregateId}");
+            async Task DoSaveAndPublish()
+            {
+                _logger.Info(() => $"Saving and publishing events for aggegrate with id {eventStream.AggregateId}");
 
-            try
-            {
-                return _eventPersistence
-                    .Save(eventStream, cancellationToken)
-                    .Then(() => commitChanges?.Invoke(cancellationToken) ?? Task.CompletedTask)
-                    .Then(() => _eventPublisher.Publish(eventStream, cancellationToken));
+                try
+                {
+                    await _eventPersistence.Save(eventStream.Events, cancellationToken);
+                    commit?.Invoke();
+                    await _eventPublisher.Publish(eventStream, cancellationToken);
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+                catch (AggregateException e)
+                {
+                    throw new InvalidOperationException("Operation could not be completed.", e.InnerException);
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException("Operation could not be completed.", e);
+                }
             }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (AggregateException e)
-            {
-                throw new InvalidOperationException("Operation could not be completed.", e.InnerException);
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException("Operation could not be completed.", e);
-            }
+
+            return DoSaveAndPublish();
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (disposing && !_disposed)
             {
                 _disposed = true;
             }
@@ -141,7 +153,7 @@ namespace Abb.CqrsEs.EventStore
         {
             if (string.IsNullOrEmpty(aggregateId))
             {
-                throw new ArgumentNullExceptionOrDefault(nameof(aggregateId));
+                throw new ArgumentNullException(nameof(aggregateId));
             }
         }
 

@@ -15,8 +15,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Abb.CqrsEs.Mediatr\Abb.CqrsEs.Mediatr.csproj" />
-  </ItemGroup>
-
 </Project>

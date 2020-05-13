@@ -8,11 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lamar.Microsoft.DependencyInjection" Version="4.1.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Abb.CqrsEs.DI\Abb.CqrsEs.DI.csproj" />
+    <PackageReference Include="Lamar.Microsoft.DependencyInjection" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

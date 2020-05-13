@@ -28,39 +28,44 @@ namespace Abb.CqrsEs.Internal
             return aggregate;
         }
 
-        public async Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
+        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             if (aggregate == null)
             {
                 throw new ArgumentNullException(nameof(aggregate));
             }
 
-            _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
-            var actualVersion = await _eventStore.GetVersion(aggregate.Id, cancellationToken);
-            if (expectedVersion != -1 && actualVersion != expectedVersion)
+            async Task DoSave()
             {
-                _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
-                throw new ConcurrencyException($"Expected version and actual version of aggregate {aggregate.AggregateIdentifier} do not match.");
-            }
-            try
-            {
-                var eventStream = aggregate.GetPendingChanges();
-                _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {eventStream.Events.Count()} pending changes.");
-                if (!eventStream.Events.Any())
+                _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
+                var actualVersion = await _eventStore.GetVersion(aggregate.Id, cancellationToken);
+                if (expectedVersion != -1 && actualVersion != expectedVersion)
                 {
-                    aggregate.CommitChanges();
-                    return;
+                    _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
+                    throw new ConcurrencyException($"Expected version and actual version of aggregate {aggregate.AggregateIdentifier} do not match.");
                 }
-                await _eventStore.SaveAndPublish(eventStream, aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var eventStream = aggregate.GetPendingChanges();
+                    _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {eventStream.Events.Count()} pending changes.");
+                    if (!eventStream.Events.Any())
+                    {
+                        aggregate.CommitChanges();
+                        return;
+                    }
+                    await _eventStore.SaveAndPublish(eventStream, aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidOperationException($"Exception occured when saving aggregate {aggregate.AggregateIdentifier}", e);
+                }
             }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException($"Exception occured when saving aggregate {aggregate.AggregateIdentifier}", e);
-            }
+
+            return DoSave();
         }
     }
 }

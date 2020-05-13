@@ -89,7 +89,7 @@ namespace Abb.CqrsEs
             }
         }
 
-        protected void Emit(Event @event)
+        protected void Emit(Guid correlationId, object @event)
         {
             if (_isCommitPending)
             {
@@ -97,13 +97,12 @@ namespace Abb.CqrsEs
                 throw new ConcurrencyException($"{AggregateIdentifier}: Cannot emit an event when a commit is pending.");
             }
 
-            @event.Version = Version + 1;
-            @event.Timestamp = DateTimeOffset.UtcNow;
+            var wrappedEvent = new Event(correlationId, @event, DateTimeOffset.UtcNow, Version + 1);
 
-            ApplyEvent(@event);
-            _changes.Add(@event);
+            ApplyEvent(wrappedEvent);
+            _changes.Add(wrappedEvent);
 
-            Logger.Debug(() => $"Emitted event ({@event.GetType().Name},{@event.Version}.");
+            Logger.Debug(() => $"Emitted event ({@event.GetType().Name},{wrappedEvent.Version}.");
         }
 
         protected void ThrowIfExpectedVersionIsInvalid(ICommand command) => ThrowIfExpectedVersionIsInvalid(command?.ExpectedVersion ?? InitialVersion);
@@ -115,6 +114,8 @@ namespace Abb.CqrsEs
                 throw new ConcurrencyException($"Aggregate '{AggregateIdentifier}' has version {Version} but the command expected version {expectedVersion}.");
             }
         }
+
+        protected abstract void When(object @event);
 
         private static bool CheckParameterType(Type expectedType, Type parameterType)
             => expectedType.IsAssignableFrom(parameterType)
@@ -141,12 +142,9 @@ namespace Abb.CqrsEs
 
         private void ApplyEvent(Event @event)
         {
-            Logger.Debug(() => $"Applying event {@event.GetType().Name} with version {@event.Version} in aggregate {AggregateIdentifier}");
+            Logger.Debug(() => $"Applying event with version {@event.Version} to aggregate {AggregateIdentifier}");
 
-            if (_eventHandlers.TryGetValue(@event.GetType(), out var handlerInfo))
-            {
-                handlerInfo.Handler.Invoke(this, @event);
-            }
+            When(@event.Data);
 
             Version = @event.Version;
         }

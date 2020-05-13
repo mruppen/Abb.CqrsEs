@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -11,8 +10,8 @@ namespace Abb.CqrsEs.UnitTests
 {
     public class AggregateRootTests
     {
-        private const int _numberOfRandomizedEvents = 20;
         private const string _aggregateId = "TestAggregate";
+        private const int _numberOfRandomizedEvents = 20;
         private readonly ITestOutputHelper _outputHelper;
 
         public AggregateRootTests(ITestOutputHelper outputHelper)
@@ -24,7 +23,7 @@ namespace Abb.CqrsEs.UnitTests
         public void AggregateRoot_emit_event_fails_when_commit_is_in_progress()
         {
             var aggregate = new Aggregate(_aggregateId, GetLogger());
-            var events = GenerateRandomizedEvents(aggregate).ToList();
+            var events = GenerateRandomizedEvents().ToList();
             events.SkipLast(1).ForEach(aggregate.EmitEvent);
 
             _ = aggregate.GetPendingChanges();
@@ -35,7 +34,7 @@ namespace Abb.CqrsEs.UnitTests
         public void AggregateRoot_event_order_is_preserved()
         {
             var aggregate = new Aggregate(GetLogger());
-            var events = GenerateRandomizedEvents(aggregate).ToList();
+            var events = GenerateRandomizedEvents().ToList();
             events.ForEach(aggregate.EmitEvent);
 
             int version = 0;
@@ -44,10 +43,8 @@ namespace Abb.CqrsEs.UnitTests
             Assert.Equal(aggregate.Version, _numberOfRandomizedEvents);
             foreach (var pendingEvent in pendingEvents.Events)
             {
-                var expected = events[version];
                 ++version;
                 Assert.Equal(version, pendingEvent.Version);
-                Assert.Equal(expected.CorrelationId, pendingEvent.CorrelationId);
             }
 
             aggregate.CommitChanges();
@@ -59,15 +56,12 @@ namespace Abb.CqrsEs.UnitTests
         {
             const int initialVersion = 5;
             var aggregate = new Aggregate(_aggregateId, initialVersion, GetLogger());
-            var events = GenerateRandomizedEvents(aggregate).ToList();
+            var events = GenerateRandomizedEvents().ToList();
             events.ForEach(aggregate.EmitEvent);
 
             var pendingChanges = aggregate.GetPendingChanges();
             var invalidEventStream = new EventStream(aggregate.Id, pendingChanges.Events.Skip(1).Select(@event =>
-            {
-                var ctor = @event.GetType().GetTypeInfo().DeclaredConstructors.ToArray()[0];
-                return (Event)ctor.Invoke(new object[] { @event.CorrelationId, @event.Version + 1 });
-            }).ToArray());
+            new Event(@event.CorrelationId, @event.Data, @event.Timestamp, @event.Version + 1)).ToArray());
 
             var testAggregate = new Aggregate(GetLogger());
             Assert.Throws<EventStreamException>(() => testAggregate.Load(invalidEventStream));
@@ -78,7 +72,7 @@ namespace Abb.CqrsEs.UnitTests
         {
             const int initialVersion = 5;
             var aggregate = new Aggregate(_aggregateId, initialVersion, GetLogger());
-            var events = GenerateRandomizedEvents(aggregate).ToList();
+            var events = GenerateRandomizedEvents().ToList();
             events.ForEach(aggregate.EmitEvent);
 
             var pendingChanges = aggregate.GetPendingChanges();
@@ -91,7 +85,7 @@ namespace Abb.CqrsEs.UnitTests
         public void AggregateRoot_load_from_history_reestablishes_state()
         {
             var aggregate = new Aggregate(_aggregateId, GetLogger());
-            var events = GenerateRandomizedEvents(aggregate).ToList();
+            var events = GenerateRandomizedEvents().ToList();
             events.ForEach(aggregate.EmitEvent);
 
             var pendingChanges = aggregate.GetPendingChanges();
@@ -113,10 +107,10 @@ namespace Abb.CqrsEs.UnitTests
         public void AggregateRoot_registers_all_event_handlers()
         {
             var aggregate = new Aggregate(_aggregateId, GetLogger());
-            aggregate.EmitEvent(new Event1(Guid.NewGuid(), 0));
-            aggregate.EmitEvent(new Event2(Guid.NewGuid(), 1));
-            aggregate.EmitEvent(new Event3(Guid.NewGuid(), 2));
-            aggregate.EmitEvent(new Event4(Guid.NewGuid(), 3));
+            aggregate.EmitEvent(new Event1());
+            aggregate.EmitEvent(new Event2());
+            aggregate.EmitEvent(new Event3());
+            aggregate.EmitEvent(new Event4());
             Assert.Equal(1, aggregate.Event1Invocations);
             Assert.Equal(1, aggregate.Event2Invocations);
             Assert.Equal(1, aggregate.Event3Invocations);
@@ -124,28 +118,27 @@ namespace Abb.CqrsEs.UnitTests
             Assert.Equal(4, aggregate.Version);
         }
 
-        private IEnumerable<Event> GenerateRandomizedEvents(AggregateRoot aggregate)
+        private IEnumerable<object> GenerateRandomizedEvents()
         {
             var random = new Random();
             for (int i = 0; i < _numberOfRandomizedEvents; i++)
             {
                 var number = random.Next(1, 40);
-                var nextVersion = aggregate.Version + i + 1;
                 if (number <= 10)
                 {
-                    yield return new Event1(Guid.NewGuid(), nextVersion);
+                    yield return new Event1();
                 }
                 else if (number <= 20)
                 {
-                    yield return new Event2(Guid.NewGuid(), nextVersion);
+                    yield return new Event2();
                 }
                 else if (number <= 30)
                 {
-                    yield return new Event3(Guid.NewGuid(), nextVersion);
+                    yield return new Event3();
                 }
                 else
                 {
-                    yield return new Event4(Guid.NewGuid(), nextVersion);
+                    yield return new Event4();
                 }
             }
         }
@@ -187,49 +180,29 @@ namespace Abb.CqrsEs.UnitTests
 
             public int Event4Invocations { get; set; }
 
+            public int UnknownEventInvocations { get; set; }
+
             protected override ILogger Logger => _logger;
 
-            public void EmitEvent(Event @event) => Emit(@event);
+            public void EmitEvent(object @event) => Emit(Guid.NewGuid(), @event);
 
-            private void Event1Handler(Event1 _) => Event1Invocations++;
-
-            private void Event2Handler(Event2 _) => Event2Invocations++;
-
-            private void Event3Handler(Event3 _) => Event3Invocations++;
-
-            private void Event4Handler(Event4 _) => Event4Invocations++;
+            protected override void When(object @event)
+                => _ = @event switch
+                {
+                    Event1 _ => Event1Invocations++,
+                    Event2 _ => Event2Invocations++,
+                    Event3 _ => Event3Invocations++,
+                    Event4 _ => Event4Invocations++,
+                    _ => UnknownEventInvocations++
+                };
         }
 
-        private class Event1 : EventWrapper
-        {
-            public Event1(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event1 { }
 
-        private class Event2 : EventWrapper
-        {
-            public Event2(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event2 { }
 
-        private class Event3 : EventWrapper
-        {
-            public Event3(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event3 { }
 
-        private class Event4 : EventWrapper
-        {
-            public Event4(Guid correlationId, int version)
-                : base(correlationId, version)
-            {
-            }
-        }
+        private class Event4 { }
     }
 }

@@ -120,9 +120,8 @@ namespace Abb.CqrsEs.EventStore
 
                 try
                 {
-                    await _eventPersistence.Save(eventStream.Events, cancellationToken);
+                    await _eventPersistence.Save(eventStream.AggregateId, eventStream.Events, cancellationToken);
                     commit?.Invoke();
-                    await _eventPublisher.Publish(eventStream, cancellationToken);
                 }
                 catch (InvalidOperationException)
                 {
@@ -135,6 +134,15 @@ namespace Abb.CqrsEs.EventStore
                 catch (Exception e)
                 {
                     throw new InvalidOperationException("Operation could not be completed.", e);
+                }
+
+                try
+                {
+                    await _eventPublisher.Publish(eventStream, cancellationToken);
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(() => $"Could not publish an event stream for aggregate '{eventStream.AggregateId}. This EventStore is not built to handle such cases.", e);
                 }
             }
 

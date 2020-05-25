@@ -10,6 +10,6 @@ namespace Abb.CqrsEs.EventStore
 
         Task<Event> GetLastOrDefault(string aggregateId, CancellationToken cancellationToken = default);
 
-        Task Save(IEnumerable<Event> eventStream, CancellationToken cancellationToken = default);
+        Task Save(string aggregateId, IEnumerable<Event> eventStream, CancellationToken cancellationToken = default);
     }
 }

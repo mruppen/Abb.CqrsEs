@@ -1,14 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>Latest</LangVersion>
     <Authors>Michael Ruppen</Authors>
-    <Description>A Mediatr integration for the CQRS command and event handlers.</Description>
+    <Description>A simple EventStore implementation</Description>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MediatR" Version="8.0.0" />
+    <PackageReference Include="System.Linq.Async" Version="4.1.1" />
   </ItemGroup>
 
   <ItemGroup>

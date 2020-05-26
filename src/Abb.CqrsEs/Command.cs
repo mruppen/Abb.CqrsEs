@@ -10,8 +10,8 @@ namespace Abb.CqrsEs
             ExpectedVersion = expectedVersion;
         }
 
-        public int ExpectedVersion { get; }
-
         public Guid CorrelationId { get; }
+
+        public int ExpectedVersion { get; }
     }
 }

@@ -11,73 +11,76 @@ using Xunit.Abstractions;
 
 namespace Abb.CqrsEs.UnitTests.Internal
 {
-    public class AggregateInteractionServiceTests
+    public class AggregateRepositoryTests
     {
+        private readonly string _aggregateId = "Aggregate";
         private readonly int _numberOfEvents = 10;
         private readonly ITestOutputHelper _outputHelper;
 
-        public AggregateInteractionServiceTests(ITestOutputHelper outputHelper)
+        public AggregateRepositoryTests(ITestOutputHelper outputHelper)
         {
             _outputHelper = outputHelper;
         }
 
         [Fact]
-        public async Task AggregateInteractionService_save_pending_changes()
+        public async Task AggregateRepository_detect_concurrency_exception()
         {
-            var aggregateId = Guid.NewGuid();
-            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents));
+            var aggregateId = _aggregateId;
+            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(_numberOfEvents), GetLogger<Aggregate>());
 
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
-            await repository.Save(aggregate);
+            eventStore.EventStreams.Add(new EventStream(aggregateId, new[] { new Event(Guid.NewGuid(), new Event1(), DateTimeOffset.UtcNow, 1) }));
 
-            Assert.Equal(0, aggregate.PendingChangesCount);
-            Assert.Equal(_numberOfEvents, eventStore.Events.Where(e => e.AggregateId == aggregateId).Count());
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
+            await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
         }
 
         [Fact]
-        public async Task AggregateInteractionService_get_restores_correct_state()
+        public async Task AggregateRepository_get_restores_correct_state()
         {
-            var aggregateId = Guid.NewGuid();
+            var aggregateId = _aggregateId;
             var eventStore = new EventStore();
-            GenerateRandomizedEvents(aggregateId, _numberOfEvents).ForEach(eventStore.Events.Add);
+            var version = 0;
+            var eventStream = new EventStream(aggregateId, GenerateRandomizedEvents(_numberOfEvents).Select(d =>
+            {
+                version++;
+                return new Event(Guid.NewGuid(), d, DateTimeOffset.UtcNow, version);
+            }).ToArray());
+            eventStore.EventStreams.Add(eventStream);
 
-            var AggregateInteractionService = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
+            var AggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
 
-            var aggregate = await AggregateInteractionService.Get<Aggregate>(aggregateId);
+            var aggregate = await AggregateRepository.Get<Aggregate>(aggregateId);
 
             Assert.Equal(_numberOfEvents, aggregate.Version);
             Assert.Equal(aggregateId, aggregate.Id);
         }
 
         [Fact]
-        public async Task AggregateInteractionService_detect_concurrency_exception()
+        public async Task AggregateRepository_save_pending_changes()
         {
-            var aggregateId = Guid.NewGuid();
-            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(aggregateId, _numberOfEvents));
+            var aggregateId = _aggregateId;
+            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(_numberOfEvents), GetLogger<Aggregate>());
 
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            eventStore.Events.Add(new Event1(Guid.NewGuid(), 1, aggregateId));
+            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
+            await repository.Save(aggregate, AggregateRoot.InitialVersion);
 
-            var repository = new AggregateInteractionService(eventStore, new AggregateFactory(GetLogger<Aggregate>()), null, GetLogger<AggregateInteractionService>());
-            await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate));
+            Assert.Equal(0, aggregate.PendingChangesCount);
+            Assert.Equal(_numberOfEvents, eventStore.EventStreams.Single(e => e.AggregateId == aggregateId).Events.Count());
         }
 
-        private IEnumerable<Event> GenerateRandomizedEvents(Guid aggregateId, int numberOfRandomizedEvents)
+        private IEnumerable<object> GenerateRandomizedEvents(int numberOfRandomizedEvents)
         {
             var random = new Random();
             for (int i = 0; i < numberOfRandomizedEvents; i++)
             {
                 var number = random.Next(1, 20);
-                var nextVersion = i + 1;
-                if (number <= 10)
-                    yield return new Event1(Guid.NewGuid(), nextVersion, aggregateId);
-                else
-                    yield return new Event2(Guid.NewGuid(), nextVersion, aggregateId);
+                yield return number <= 10 ? new Event1() : (object)new Event2();
             }
         }
 
@@ -86,6 +89,50 @@ namespace Abb.CqrsEs.UnitTests.Internal
             var factory = new LoggerFactory();
             factory.AddProvider(new XunitLoggerProvider(_outputHelper));
             return factory.CreateLogger<T>();
+        }
+
+        private class Aggregate : AggregateRoot
+        {
+            private readonly ILogger _logger;
+
+            public Aggregate(ILogger logger)
+                : this(string.Empty, logger)
+            { }
+
+            public Aggregate(string id, ILogger logger)
+                : this(id, InitialVersion, logger)
+            {
+                Id = id;
+            }
+
+            public Aggregate(string id, int version, ILogger logger)
+                : base()
+            {
+                Id = id;
+                Version = version;
+                _logger = logger;
+            }
+
+            public Aggregate(string id, IEnumerable<object> events, ILogger logger)
+            {
+                Id = id;
+                events.ForEach(e => Emit(Guid.NewGuid(), e));
+                _logger = logger;
+            }
+
+            public int Event1Invocations { get; set; }
+
+            public int Event2Invocations { get; set; }
+
+            protected override ILogger Logger => _logger;
+
+            protected override void When(object @event)
+                => _ = @event switch
+                {
+                    Event1 _ => Event1Invocations++,
+                    Event2 _ => Event2Invocations++,
+                    _ => -1
+                };
         }
 
         private class AggregateFactory : IAggregateFactory
@@ -99,119 +146,44 @@ namespace Abb.CqrsEs.UnitTests.Internal
 
             public T CreateAggregate<T>() where T : AggregateRoot
             {
-                return (T)Activator.CreateInstance(typeof(T), _logger);
+                return Activator.CreateInstance(typeof(T), _logger) as T ?? throw new InvalidOperationException();
             }
         }
 
-        private class Aggregate : AggregateRoot
-        {
-            private readonly ILogger _logger;
+        private class Event1 { }
 
-            public Aggregate(ILogger logger)
-                : this(Guid.Empty, logger)
-            { }
-
-            public Aggregate(Guid id, ILogger logger)
-                : this(id, InitialVersion, logger)
-            {
-                Id = id;
-            }
-
-            public Aggregate(Guid id, int version, ILogger logger)
-                : base()
-            {
-                Id = id;
-                Version = version;
-                _logger = logger;
-            }
-
-            public Aggregate(Guid id, IEnumerable<Event> events)
-            {
-                Id = id;
-                events.ForEachAsync(e => Emit(e, CancellationToken.None)).GetAwaiter().GetResult();
-            }
-
-            public int Event1Invocations { get; set; }
-
-            public int Event2Invocations { get; set; }
-
-            protected override ILogger Logger => _logger;
-
-            public Task EmitEvent(Event @event)
-            {
-                return Emit(@event, CancellationToken.None);
-            }
-
-            private void Handle(Event1 @event)
-            {
-                Event1Invocations++;
-            }
-
-            private void Apply(Event2 @event)
-            {
-                Event2Invocations++;
-            }
-        }
+        private class Event2 { }
 
         private class EventStore : IEventStore
         {
-            public IList<Event> Events { get; } = new List<Event>();
+            public IList<EventStream> EventStreams { get; } = new List<EventStream>();
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
-            {
-                return GetEvents(aggregateId, -1, _, token);
-            }
+            public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken cancellationToken = default)
+                => new EventStream(aggregateId, EventStreams.Where(e => e.AggregateId == aggregateId)
+                    .SelectMany(e => e.Events)
+                    .Where(e => e.Version >= fromVersion)
+                    .OrderBy(e => e.Version)
+                    .ToArray())
+                    .AsTask();
 
-            public Task<IEnumerable<Event>> GetEvents(Guid aggregateId, int fromVersion, IEventPersistence _, CancellationToken token = default)
-            {
-                return Events.Where(e => e.AggregateId == aggregateId && e.Version >= fromVersion)
-                              .OrderBy(e => e.Version)
-                              .AsEnumerable()
-                              .AsTask();
-            }
+            public Task<EventStream> GetEventStream(string aggregateId, CancellationToken cancellationToken = default) => GetEventStream(aggregateId, -1, cancellationToken);
 
-            public async Task<int> GetVersion(Guid aggregateId, IEventPersistence _, CancellationToken token = default)
-            {
-                var lastEvent = (await GetEvents(aggregateId, _)).LastOrDefault();
-                return lastEvent != null
-                    ? lastEvent.Version
-                    : 0;
-            }
+            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default) => (await GetEventStream(aggregateId))?.ToVersion ?? AggregateRoot.InitialVersion;
 
-            public Task SaveAndPublish(Guid aggregateId, IEnumerable<Event> events, Func<CancellationToken, Task> beforePublish, IEventPersistence _, CancellationToken token = default)
+            public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken cancellationToken = default)
             {
-                foreach (var @event in events)
+                var currentStream = EventStreams.SingleOrDefault(e => e.AggregateId == eventStream.AggregateId);
+                if (currentStream == null)
                 {
-                    if (Events.Any(e => e.AggregateId == @event.AggregateId && e.Version == @event.Version))
-                        throw new InvalidOperationException();
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, eventStream.Events.ToArray()));
                 }
-
-                events.ForEach(Events.Add);
-                return beforePublish(token);
-            }
-        }
-
-        private class EventPublisher : IEventPublisher
-        {
-            public Task Publish(Event @event, CancellationToken cancellationToken = default)
-            {
+                else
+                {
+                    EventStreams.Remove(currentStream);
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, currentStream.Events.Concat(eventStream.Events).ToArray()));
+                }
+                commit();
                 return Task.CompletedTask;
-            }
-        }
-
-        private class Event1 : EventWrapper
-        {
-            public Event1(Guid correlationId, int version, Guid aggregateId)
-                : base(correlationId, version, aggregateId)
-            {
-            }
-        }
-
-        private class Event2 : EventWrapper
-        {
-            public Event2(Guid correlationId, int version, Guid aggregateId)
-                : base(correlationId, version, aggregateId)
-            {
             }
         }
     }

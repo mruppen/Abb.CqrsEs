@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Internal
+namespace Abb.CqrsEs
 {
-    internal class AggregateRepository : IAggregateRepository
+    public class AggregateRepository : IAggregateRepository
     {
         private readonly IAggregateFactory _aggregateFactory;
         private readonly IEventStore _eventStore;

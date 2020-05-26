@@ -1,20 +1,15 @@
-﻿using Abb.CqrsEs.Internal;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace Abb.CqrsEs
 {
     public abstract class AggregateRoot
     {
         private readonly IList<Event> _changes = new List<Event>();
-        private readonly IDictionary<Type, (CompiledMethodInfo Handler, Type ReturnType)> _eventHandlers = new Dictionary<Type, (CompiledMethodInfo Handler, Type ReturnType)>();
         private string? _id;
         private bool _isCommitPending = false;
-
-        protected AggregateRoot() => RegisterEventHandlers();
 
         public static int InitialVersion { get { return 0; } }
 
@@ -117,29 +112,6 @@ namespace Abb.CqrsEs
 
         protected abstract void When(object @event);
 
-        private static bool CheckParameterType(Type expectedType, Type parameterType)
-            => expectedType.IsAssignableFrom(parameterType)
-                && !parameterType.IsInterface
-                && !parameterType.IsAbstract
-                && !parameterType.IsGenericParameter;
-
-        private static bool IsEventHandler(MethodInfo methodInfo)
-        {
-            if (methodInfo == null)
-            {
-                return false;
-            }
-
-            var parameters = methodInfo.GetParameters();
-            if (parameters == null || parameters.Length != 1)
-            {
-                return false;
-            }
-
-            var eventTypeParameterOk = CheckParameterType(typeof(Event), parameters[0].ParameterType);
-            return eventTypeParameterOk;
-        }
-
         private void ApplyEvent(Event @event)
         {
             Logger.Debug(() => $"Applying event with version {@event.Version} to aggregate {AggregateIdentifier}");
@@ -147,16 +119,6 @@ namespace Abb.CqrsEs
             When(@event.Data);
 
             Version = @event.Version;
-        }
-
-        private void RegisterEventHandlers()
-        {
-            var thisType = GetType();
-            var methods = thisType.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
-            methods.Where(IsEventHandler)
-                   .Select(mi => new KeyValuePair<Type, (CompiledMethodInfo Handler, Type ReturnType)>(mi.GetParameters()[0].ParameterType, (new CompiledMethodInfo(mi, thisType), mi.ReturnType)))
-                   .ForEach(_eventHandlers.Add);
         }
 
         private void VerifyEventStreamOrThrow(IEnumerable<Event> events)

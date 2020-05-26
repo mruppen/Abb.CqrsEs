@@ -2,9 +2,9 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Abb.CqrsEs.Internal
+namespace Abb.CqrsEs
 {
-    internal class AggregateSnapshotRespositoryDecorator : IAggregateRepository
+    public class AggregateSnapshotRespositoryDecorator : IAggregateRepository
     {
         private readonly IAggregateFactory _aggregateFactory;
         private readonly IAggregateRepository _decoratedRepository;

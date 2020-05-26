@@ -1,5 +1,4 @@
-﻿using Abb.CqrsEs.Internal;
-using Abb.CqrsEs.UnitTests.Common;
+﻿using Abb.CqrsEs.UnitTests.Common;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Abb.CqrsEs.UnitTests.Internal
+namespace Abb.CqrsEs.UnitTests
 {
     public class AggregateRepositoryTests
     {

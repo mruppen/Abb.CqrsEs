@@ -2,7 +2,10 @@
 
 namespace Abb.CqrsEs
 {
+#pragma warning disable S3925 // "ISerializable" should be implemented correctly
+
     public class UnknownAggregateIdException : Exception
+#pragma warning restore S3925 // "ISerializable" should be implemented correctly
     {
         public UnknownAggregateIdException(string unknownId)
             : this(unknownId, $"Id {unknownId} is unknown.")

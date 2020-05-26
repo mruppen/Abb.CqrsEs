@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <LangVersion>Latest</LangVersion>
+
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -14,10 +14,15 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="1.2.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Abb.CqrsEs\Abb.CqrsEs.csproj" />
+    <ProjectReference Include="..\Abb.CqrsEs.EventStore\Abb.CqrsEs.EventStore.csproj" />
+    <ProjectReference Include="..\Abb.CqrsEs.UnitTests\Abb.CqrsEs.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>

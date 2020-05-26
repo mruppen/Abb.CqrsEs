@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>Latest</LangVersion>
     <Authors>Michael Ruppen</Authors>
-    <Description>A simple CQRS framework with an event store.</Description>
+    <Description>A simple CQRS framework.</Description>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Abb.Core" Version="1.6.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Abb.Core" Version="1.9.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.4" />
   </ItemGroup>
-
 </Project>

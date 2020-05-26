@@ -1,25 +1,23 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 
 namespace Abb.CqrsEs
 {
-    public abstract class Event : IEvent
+    public class Event : IEvent
     {
-        protected Event(Guid correlationId)
+        public Event(Guid correlationId, object data, DateTimeOffset timestamp, int version)
         {
             CorrelationId = correlationId;
+            Data = data;
+            Timestamp = timestamp;
+            Version = version;
         }
 
-        [JsonProperty("aggregateId")]
-        public Guid AggregateId { get; internal set; }
+        public Guid CorrelationId { get; }
 
-        [JsonProperty("version")]
-        public int Version { get; internal set; }
+        public object Data { get; }
 
-        [JsonProperty("timestamp")]
-        public DateTimeOffset Timestamp { get; internal set; }
+        public DateTimeOffset Timestamp { get; }
 
-        [JsonProperty("correlationId")]
-        public Guid CorrelationId { get; internal set; }
+        public int Version { get; }
     }
 }

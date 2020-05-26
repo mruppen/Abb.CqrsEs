@@ -6,8 +6,8 @@ namespace Abb.CqrsEs.UnitTests.Common
 {
     public class XunitLogger : ILogger
     {
-        private readonly ITestOutputHelper _testOutputHelper;
         private readonly string _categoryName;
+        private readonly ITestOutputHelper _testOutputHelper;
 
         public XunitLogger(ITestOutputHelper testOutputHelper, string categoryName)
         {
@@ -25,7 +25,9 @@ namespace Abb.CqrsEs.UnitTests.Common
         {
             _testOutputHelper.WriteLine($"{_categoryName} [{eventId}] {formatter(state, exception)}");
             if (exception != null)
+            {
                 _testOutputHelper.WriteLine(exception.ToString());
+            }
         }
 
         private class NoopDisposable : IDisposable

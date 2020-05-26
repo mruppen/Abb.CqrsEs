@@ -4,10 +4,8 @@ namespace Abb.CqrsEs
 {
     public interface IEvent : IMessage
     {
-        Guid AggregateId { get; }
+        DateTimeOffset Timestamp { get; }
 
         int Version { get; }
-
-        DateTimeOffset Timestamp { get; }
     }
 }

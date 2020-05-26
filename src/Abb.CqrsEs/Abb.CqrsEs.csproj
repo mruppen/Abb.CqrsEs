@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Abb.Core" Version="1.8.0" />
+    <PackageReference Include="Abb.Core" Version="1.9.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.4" />
   </ItemGroup>
 </Project>

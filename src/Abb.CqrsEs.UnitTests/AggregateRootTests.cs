@@ -37,48 +37,11 @@ namespace Abb.CqrsEs.UnitTests
             var events = GenerateRandomizedEvents().ToList();
             events.ForEach(aggregate.EmitEvent);
 
-            int version = 0;
             var pendingEvents = aggregate.GetPendingChanges();
-            Assert.Equal(_numberOfRandomizedEvents, pendingEvents.Events.Count());
+            Assert.Equal(_numberOfRandomizedEvents, pendingEvents.Count());
             Assert.Equal(aggregate.Version, _numberOfRandomizedEvents);
-            foreach (var pendingEvent in pendingEvents.Events)
-            {
-                ++version;
-                Assert.Equal(version, pendingEvent.Version);
-            }
-
             aggregate.CommitChanges();
             Assert.Equal(0, aggregate.PendingChangesCount);
-        }
-
-        [Fact]
-        public void AggregateRoot_load_from_history_detects_event_stream_has_invalid_versions()
-        {
-            const int initialVersion = 5;
-            var aggregate = new Aggregate(_aggregateId, initialVersion, GetLogger());
-            var events = GenerateRandomizedEvents().ToList();
-            events.ForEach(aggregate.EmitEvent);
-
-            var pendingChanges = aggregate.GetPendingChanges();
-            var invalidEventStream = new EventStream(aggregate.Id, pendingChanges.Events.Skip(1).Select(@event =>
-            new Event(@event.CorrelationId, @event.Data, @event.Timestamp, @event.Version + 1)).ToArray());
-
-            var testAggregate = new Aggregate(GetLogger());
-            Assert.Throws<EventStreamException>(() => testAggregate.Load(invalidEventStream));
-        }
-
-        [Fact]
-        public void AggregateRoot_load_from_history_detects_event_stream_starts_with_invalid_version()
-        {
-            const int initialVersion = 5;
-            var aggregate = new Aggregate(_aggregateId, initialVersion, GetLogger());
-            var events = GenerateRandomizedEvents().ToList();
-            events.ForEach(aggregate.EmitEvent);
-
-            var pendingChanges = aggregate.GetPendingChanges();
-            aggregate.CommitChanges();
-            var testAggregate = new Aggregate(GetLogger());
-            Assert.Throws<EventStreamException>(() => testAggregate.Load(pendingChanges));
         }
 
         [Fact]
@@ -89,17 +52,18 @@ namespace Abb.CqrsEs.UnitTests
             events.ForEach(aggregate.EmitEvent);
 
             var pendingChanges = aggregate.GetPendingChanges();
-            aggregate.CommitChanges();
 
-            var testAggregate = new Aggregate(GetLogger());
+            var testAggregate = new Aggregate(_aggregateId, GetLogger());
             testAggregate.Load(pendingChanges);
 
-            Assert.Equal(aggregate.Id, testAggregate.Id);
+            aggregate.CommitChanges();
+
             Assert.Equal(aggregate.Version, testAggregate.Version);
             Assert.Equal(aggregate.Event1Invocations, testAggregate.Event1Invocations);
             Assert.Equal(aggregate.Event2Invocations, testAggregate.Event2Invocations);
             Assert.Equal(aggregate.Event3Invocations, testAggregate.Event3Invocations);
             Assert.Equal(aggregate.Event4Invocations, testAggregate.Event4Invocations);
+            Assert.Equal(0, aggregate.PendingChangesCount);
             Assert.Equal(aggregate.PendingChangesCount, testAggregate.PendingChangesCount);
         }
 
@@ -184,7 +148,7 @@ namespace Abb.CqrsEs.UnitTests
 
             protected override ILogger Logger => _logger;
 
-            public void EmitEvent(object @event) => Emit(Guid.NewGuid(), @event);
+            public void EmitEvent(object @event) => Emit(@event);
 
             protected override void When(object @event)
                 => _ = @event switch

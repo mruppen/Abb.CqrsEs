@@ -47,7 +47,7 @@ namespace Abb.CqrsEs
             {
                 await snapshottable.RestoreSnapshot(snapshot, cancellationToken);
                 var eventStream = await _eventStore.GetEventStream(aggregateId, snapshot.Version + 1, cancellationToken);
-                aggregate.Load(eventStream);
+                aggregate.Load(eventStream.Events);
                 return aggregate;
             }
 

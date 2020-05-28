@@ -23,8 +23,9 @@ namespace Abb.CqrsEs
         {
             _logger.Debug(() => $"Initializing aggregate of type {typeof(T).Name} with id {aggregateId}");
             var aggregate = _aggregateFactory.CreateAggregate<T>();
-            var eventStream = await _eventStore.GetEventStream(aggregateId, cancellationToken);
-            aggregate.Load(eventStream);
+            aggregate.Id = aggregateId;
+            var eventStream = await _eventStore.GetEventStream(aggregateId, 1, cancellationToken);
+            aggregate.Load(eventStream.Events);
             return aggregate;
         }
 
@@ -46,14 +47,15 @@ namespace Abb.CqrsEs
                 }
                 try
                 {
-                    var eventStream = aggregate.GetPendingChanges();
-                    _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {eventStream.Events.Count()} pending changes.");
-                    if (!eventStream.Events.Any())
+                    var events = aggregate.GetPendingChanges();
+                    _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {events.Count()} pending changes.");
+                    if (!events.Any())
                     {
                         aggregate.CommitChanges();
                         return;
                     }
-                    await _eventStore.SaveAndPublish(eventStream, aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
+
+                    await _eventStore.SaveAndPublish(new EventStream(aggregate.Id, actualVersion, events.ToArray()), aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
                 }
                 catch (InvalidOperationException)
                 {

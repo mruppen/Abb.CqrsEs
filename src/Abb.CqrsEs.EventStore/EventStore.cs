@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace Abb.CqrsEs.EventStore
                     var events = await _eventPersistence.Get(aggregateId, fromVersion, cancellationToken).ToArrayAsync().ConfigureAwait(false)
                         ?? new Event[0];
                     _logger.Debug(() => $"Retrieved {events.Length} events for aggregate {aggregateId}.");
-                    return new EventStream(aggregateId, events);
+                    return new EventStream(aggregateId, fromVersion, events.Select(e => e.Data).ToArray());
                 }
                 catch (ArgumentException)
                 {
@@ -61,9 +62,6 @@ namespace Abb.CqrsEs.EventStore
 
             return DoGetEventStream();
         }
-
-        public Task<EventStream> GetEventStream(string aggregateId, CancellationToken cancellationToken = default)
-            => GetEventStream(aggregateId, AggregateRoot.InitialVersion, cancellationToken);
 
         public Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default)
         {
@@ -120,7 +118,16 @@ namespace Abb.CqrsEs.EventStore
 
                 try
                 {
-                    await _eventPersistence.Save(eventStream.AggregateId, eventStream.Events, cancellationToken);
+                    IEnumerable<Event> ConvertEvents(IEnumerable<object> events)
+                    {
+                        var version = eventStream.FromVersion;
+                        foreach (var e in events)
+                        {
+                            yield return new Event(Guid.NewGuid(), e, DateTimeOffset.UtcNow, version++);
+                        }
+                    }
+
+                    await _eventPersistence.Save(eventStream.AggregateId, ConvertEvents(eventStream.Events), cancellationToken);
                     commit?.Invoke();
                 }
                 catch (InvalidOperationException)

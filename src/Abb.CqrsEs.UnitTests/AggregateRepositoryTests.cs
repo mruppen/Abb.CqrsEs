@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            eventStore.EventStreams.Add(new EventStream(aggregateId, new[] { new Event(Guid.NewGuid(), new Event1(), DateTimeOffset.UtcNow, 1) }));
+            eventStore.EventStreams.Add(new EventStream(aggregateId, 1, new[] { new Event1() }));
 
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
@@ -41,12 +41,7 @@ namespace Abb.CqrsEs.UnitTests
         {
             var aggregateId = _aggregateId;
             var eventStore = new EventStore();
-            var version = 0;
-            var eventStream = new EventStream(aggregateId, GenerateRandomizedEvents(_numberOfEvents).Select(d =>
-            {
-                version++;
-                return new Event(Guid.NewGuid(), d, DateTimeOffset.UtcNow, version);
-            }).ToArray());
+            var eventStream = new EventStream(aggregateId, 1, GenerateRandomizedEvents(_numberOfEvents).ToArray());
             eventStore.EventStreams.Add(eventStream);
 
             var AggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
@@ -115,7 +110,7 @@ namespace Abb.CqrsEs.UnitTests
             public Aggregate(string id, IEnumerable<object> events, ILogger logger)
             {
                 Id = id;
-                events.ForEach(e => Emit(Guid.NewGuid(), e));
+                events.ForEach(e => Emit(e));
                 _logger = logger;
             }
 
@@ -158,28 +153,25 @@ namespace Abb.CqrsEs.UnitTests
             public IList<EventStream> EventStreams { get; } = new List<EventStream>();
 
             public Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken cancellationToken = default)
-                => new EventStream(aggregateId, EventStreams.Where(e => e.AggregateId == aggregateId)
+                => new EventStream(aggregateId, fromVersion, EventStreams.Where(e => e.AggregateId == aggregateId)
                     .SelectMany(e => e.Events)
-                    .Where(e => e.Version >= fromVersion)
-                    .OrderBy(e => e.Version)
+                    .Skip(Math.Max(0, fromVersion - 1))
                     .ToArray())
                     .AsTask();
 
-            public Task<EventStream> GetEventStream(string aggregateId, CancellationToken cancellationToken = default) => GetEventStream(aggregateId, -1, cancellationToken);
-
-            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default) => (await GetEventStream(aggregateId))?.ToVersion ?? AggregateRoot.InitialVersion;
+            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default) => (await GetEventStream(aggregateId, 1))?.Events.Count() ?? AggregateRoot.InitialVersion;
 
             public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken cancellationToken = default)
             {
                 var currentStream = EventStreams.SingleOrDefault(e => e.AggregateId == eventStream.AggregateId);
                 if (currentStream == null)
                 {
-                    EventStreams.Add(new EventStream(eventStream.AggregateId, eventStream.Events.ToArray()));
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, 1, eventStream.Events.ToArray()));
                 }
                 else
                 {
                     EventStreams.Remove(currentStream);
-                    EventStreams.Add(new EventStream(eventStream.AggregateId, currentStream.Events.Concat(eventStream.Events).ToArray()));
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, 1, currentStream.Events.Concat(eventStream.Events).ToArray()));
                 }
                 commit();
                 return Task.CompletedTask;

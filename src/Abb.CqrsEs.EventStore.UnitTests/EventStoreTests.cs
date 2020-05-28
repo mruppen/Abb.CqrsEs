@@ -29,7 +29,7 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var persistence = new EventPersistence();
             var eventStore = new EventStore(persistence, publisher, loggerFactory.CreateLogger<EventStore>());
 
-            var retrievedEvents = await eventStore.GetEventStream("invalid_aggragate_id");
+            var retrievedEvents = await eventStore.GetEventStream("invalid_aggragate_id", 0);
 
             Assert.False(retrievedEvents.Events.Any());
         }
@@ -40,13 +40,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, new[]
-            {
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 1),
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 2)
-            });
+            var eventStream = new EventStream(aggregateId, 1, new[] { new Event1(), new Event1() });
 
             var persistence = new EventPersistence(new[] { eventStream });
             var eventStore = new EventStore(persistence, new SimpleEventPublisher(), loggerFactory.CreateLogger<EventStore>());
@@ -63,13 +58,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(new XunitLoggerProvider(_testOutputHelper));
 
-            var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, new[]
-            {
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 1),
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 2)
-            });
+            var eventStream = new EventStream(aggregateId, 1, new[] { new Event1(), new Event1() });
 
             var persistence = new EventPersistence(new[] { eventStream });
             var eventStore = new EventStore(persistence, new SimpleEventPublisher(), loggerFactory.CreateLogger<EventStore>());
@@ -103,13 +93,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var persistence = new EventPersistence();
             var eventStore = new EventStore(persistence, publisher, loggerFactory.CreateLogger<EventStore>());
 
-            var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, new[]
-            {
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 1),
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 2)
-            });
+            var eventStream = new EventStream(aggregateId, 1, new[] { new Event1(), new Event1() });
 
             await eventStore.SaveAndPublish(eventStream, () => { }, default);
             eventStore.Dispose();
@@ -128,13 +113,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var persistence = new EventPersistence();
             var eventStore = new EventStore(persistence, publisher, loggerFactory.CreateLogger<EventStore>());
 
-            var correlationId = Guid.NewGuid();
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, new[]
-            {
-                new Event(correlationId, new Event1(), DateTimeOffset.UtcNow, 1),
-                new Event(correlationId, new EventFailingToPublish(), DateTimeOffset.UtcNow, 2)
-            });
+            var eventStream = new EventStream(aggregateId, 1, new object[] { new Event1(), new EventFailingToPublish() });
 
             await eventStore.SaveAndPublish(eventStream, () => { }, default);
             eventStore.Dispose();
@@ -161,7 +141,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
                 _persistedEvents = new Dictionary<string, IList<Event>>();
                 foreach (var group in events.GroupBy(s => s.AggregateId))
                 {
-                    _persistedEvents[group.Key] = new List<Event>(group.SelectMany(g => g.Events).OrderBy(e => e.Version));
+                    var version = 0;
+                    _persistedEvents[group.Key] = new List<Event>(group.SelectMany(g => g.Events).Select(e => new Event(Guid.NewGuid(), e, DateTimeOffset.UtcNow, ++version)));
                 }
             }
 
@@ -175,8 +156,8 @@ namespace Abb.CqrsEs.EventStore.UnitTests
 
             public EventStream GetPersistedEvents(string aggregateId)
                 => !_persistedEvents.ContainsKey(aggregateId)
-                    ? new EventStream(aggregateId, Array.Empty<Event>())
-                    : new EventStream(aggregateId, _persistedEvents[aggregateId].ToArray());
+                    ? new EventStream(aggregateId, 0, Array.Empty<object>())
+                    : new EventStream(aggregateId, 0, _persistedEvents[aggregateId].ToArray());
 
             public Task Save(string aggregateId, IEnumerable<Event> eventStream, CancellationToken cancellationToken = default)
             {
@@ -195,13 +176,13 @@ namespace Abb.CqrsEs.EventStore.UnitTests
 
         private class SimpleEventPublisher : IEventPublisher
         {
-            public IList<IEvent> PublishedEvents { get; } = new List<IEvent>();
+            public IList<object> PublishedEvents { get; } = new List<object>();
 
             public Task Publish(EventStream eventStream, CancellationToken cancellationToken = default)
             {
                 foreach (var @event in eventStream.Events)
                 {
-                    if (@event.Data is EventFailingToPublish)
+                    if (@event is EventFailingToPublish)
                     {
                         throw new InvalidOperationException();
                     }

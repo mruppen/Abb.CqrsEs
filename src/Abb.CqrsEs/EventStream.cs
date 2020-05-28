@@ -1,24 +1,20 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 namespace Abb.CqrsEs
 {
     public class EventStream
     {
-        public EventStream(string aggregateId, Event[] events)
+        public EventStream(string aggregateId, int fromVersion, object[] events)
         {
             AggregateId = aggregateId;
-            FromVersion = events.FirstOrDefault()?.Version ?? AggregateRoot.InitialVersion;
-            ToVersion = FromVersion + events.Length;
+            FromVersion = fromVersion;
             Events = events;
         }
 
         public string AggregateId { get; }
 
-        public IEnumerable<Event> Events { get; }
+        public IEnumerable<object> Events { get; }
 
         public int FromVersion { get; }
-
-        public int ToVersion { get; }
     }
 }

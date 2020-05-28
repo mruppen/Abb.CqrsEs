@@ -1,20 +1,20 @@
 ﻿using System;
 
-namespace Abb.CqrsEs
+namespace Abb.CqrsEs.EventStore
 {
     public class Event : IEvent
     {
-        public Event(Guid correlationId, object data, DateTimeOffset timestamp, int version)
+        public Event(Guid id, object data, DateTimeOffset timestamp, int version)
         {
-            CorrelationId = correlationId;
+            Id = id;
             Data = data;
             Timestamp = timestamp;
             Version = version;
         }
 
-        public Guid CorrelationId { get; }
-
         public object Data { get; }
+
+        public Guid Id { get; }
 
         public DateTimeOffset Timestamp { get; }
 

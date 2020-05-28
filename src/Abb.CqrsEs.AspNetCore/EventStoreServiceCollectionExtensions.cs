@@ -8,6 +8,6 @@ namespace Abb.CqrsEs.AspNetCore
         public static IServiceCollection AddEventSourcing(this IServiceCollection services)
             => services.AddSingleton<IAggregateFactory, DefaultAggregateFactory>()
                 .AddSingleton<IAggregateRepository, AggregateRepository>()
-                .AddSingleton<CreateAggregateRootDelegate>(p => p.GetService);
+                .AddSingleton<CreateAggregateRootDelegate>(p => t => ActivatorUtilities.CreateInstance(p, t));
     }
 }

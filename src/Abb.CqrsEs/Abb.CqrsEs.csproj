@@ -10,6 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="Abb.Core" Version="1.9.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.6" />
   </ItemGroup>
 </Project>

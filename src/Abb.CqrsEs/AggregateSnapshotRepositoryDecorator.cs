@@ -26,7 +26,7 @@ namespace Abb.CqrsEs
                 ? _decoratedRepository.Get<T>(aggregateId, cancellationToken)
                 : LoadFromSnapshot(aggregateId, _aggregateFactory.CreateAggregate<T>(), cancellationToken);
 
-        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
+        public Task Save<T>(T aggregate, int expectedVersion = int.MinValue, CancellationToken cancellationToken = default) where T : AggregateRoot
             => DoSaveAsync(aggregate, () => _decoratedRepository.Save(aggregate, expectedVersion, cancellationToken), cancellationToken);
 
         private async Task DoSaveAsync<T>(T aggregate, Func<Task> saveFunc, CancellationToken cancellationToken) where T : AggregateRoot

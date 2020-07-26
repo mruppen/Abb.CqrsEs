@@ -39,7 +39,7 @@ namespace Abb.CqrsEs.UnitTests
 
             var pendingEvents = aggregate.GetPendingChanges();
             Assert.Equal(_numberOfRandomizedEvents, pendingEvents.Count());
-            Assert.Equal(aggregate.Version, _numberOfRandomizedEvents);
+            Assert.Equal(aggregate.Version, _numberOfRandomizedEvents - 1);
             aggregate.CommitChanges();
             Assert.Equal(0, aggregate.PendingChangesCount);
         }
@@ -79,7 +79,7 @@ namespace Abb.CqrsEs.UnitTests
             Assert.Equal(1, aggregate.Event2Invocations);
             Assert.Equal(1, aggregate.Event3Invocations);
             Assert.Equal(1, aggregate.Event4Invocations);
-            Assert.Equal(4, aggregate.Version);
+            Assert.Equal(3, aggregate.Version);
         }
 
         private IEnumerable<object> GenerateRandomizedEvents()

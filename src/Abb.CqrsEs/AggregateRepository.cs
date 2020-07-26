@@ -24,12 +24,12 @@ namespace Abb.CqrsEs
             _logger.Debug(() => $"Initializing aggregate of type {typeof(T).Name} with id {aggregateId}");
             var aggregate = _aggregateFactory.CreateAggregate<T>();
             aggregate.Id = aggregateId;
-            var eventStream = await _eventStore.GetEventStream(aggregateId, 1, cancellationToken);
+            var eventStream = await _eventStore.GetEventStream(aggregateId, AggregateRoot.InitialVersion + 1, cancellationToken);
             aggregate.Load(eventStream.Events);
             return aggregate;
         }
 
-        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
+        public Task Save<T>(T aggregate, int expectedVersion = int.MinValue, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             if (aggregate == null)
             {
@@ -40,7 +40,7 @@ namespace Abb.CqrsEs
             {
                 _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
                 var actualVersion = await _eventStore.GetVersion(aggregate.Id, cancellationToken);
-                if (expectedVersion != -1 && actualVersion != expectedVersion)
+                if (expectedVersion != int.MinValue && actualVersion != expectedVersion)
                 {
                     _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
                     throw new ConcurrencyException($"Expected version and actual version of aggregate {aggregate.AggregateIdentifier} do not match.");

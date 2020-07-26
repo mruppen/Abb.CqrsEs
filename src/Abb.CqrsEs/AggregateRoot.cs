@@ -11,7 +11,9 @@ namespace Abb.CqrsEs
         private string? _id;
         private bool _isCommitPending = false;
 
-        public static int InitialVersion { get { return 0; } }
+        protected AggregateRoot() => Version = InitialVersion;
+
+        public static int InitialVersion => -1;
 
         public string AggregateIdentifier
         {

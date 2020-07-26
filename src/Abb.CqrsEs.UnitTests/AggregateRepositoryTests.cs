@@ -30,7 +30,7 @@ namespace Abb.CqrsEs.UnitTests
             Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
 
             var eventStore = new EventStore();
-            eventStore.EventStreams.Add(new EventStream(aggregateId, 1, new[] { new Event1() }));
+            eventStore.EventStreams.Add(new EventStream(aggregateId, AggregateRoot.InitialVersion + 1, new[] { new Event1() }));
 
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
             await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
@@ -41,14 +41,14 @@ namespace Abb.CqrsEs.UnitTests
         {
             var aggregateId = _aggregateId;
             var eventStore = new EventStore();
-            var eventStream = new EventStream(aggregateId, 1, GenerateRandomizedEvents(_numberOfEvents).ToArray());
+            var eventStream = new EventStream(aggregateId, AggregateRoot.InitialVersion + 1, GenerateRandomizedEvents(_numberOfEvents).ToArray());
             eventStore.EventStreams.Add(eventStream);
 
             var AggregateRepository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
 
             var aggregate = await AggregateRepository.Get<Aggregate>(aggregateId);
 
-            Assert.Equal(_numberOfEvents, aggregate.Version);
+            Assert.Equal(_numberOfEvents, aggregate.Version + 1);
             Assert.Equal(aggregateId, aggregate.Id);
         }
 
@@ -159,7 +159,16 @@ namespace Abb.CqrsEs.UnitTests
                     .ToArray())
                     .AsTask();
 
-            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default) => (await GetEventStream(aggregateId, 1))?.Events.Count() ?? AggregateRoot.InitialVersion;
+            public async Task<int> GetVersion(string aggregateId, CancellationToken cancellationToken = default)
+            {
+                var events = await GetEventStream(aggregateId, 1);
+                if (events != null)
+                {
+                    return events.Events.Count() - 1;
+                }
+
+                return AggregateRoot.InitialVersion;
+            }
 
             public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken cancellationToken = default)
             {

@@ -22,21 +22,6 @@ namespace Abb.CqrsEs.UnitTests
         }
 
         [Fact]
-        public async Task AggregateRepository_detect_concurrency_exception()
-        {
-            var aggregateId = _aggregateId;
-            var aggregate = new Aggregate(aggregateId, GenerateRandomizedEvents(_numberOfEvents), GetLogger<Aggregate>());
-
-            Assert.Equal(_numberOfEvents, aggregate.PendingChangesCount);
-
-            var eventStore = new EventStore();
-            eventStore.EventStreams.Add(new EventStream(aggregateId, AggregateRoot.InitialVersion + 1, new[] { new Event1() }));
-
-            var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
-            await Assert.ThrowsAsync<ConcurrencyException>(() => repository.Save(aggregate, AggregateRoot.InitialVersion));
-        }
-
-        [Fact]
         public async Task AggregateRepository_get_restores_correct_state()
         {
             var aggregateId = _aggregateId;
@@ -62,7 +47,7 @@ namespace Abb.CqrsEs.UnitTests
 
             var eventStore = new EventStore();
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
-            await repository.Save(aggregate, AggregateRoot.InitialVersion);
+            await repository.Save(aggregate);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
             Assert.Equal(_numberOfEvents, eventStore.EventStreams.Single(e => e.AggregateId == aggregateId).Events.Count());

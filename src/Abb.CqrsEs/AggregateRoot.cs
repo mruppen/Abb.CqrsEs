@@ -55,11 +55,11 @@ namespace Abb.CqrsEs
             Logger.Debug(() => $"Committed changes for aggregate {AggregateIdentifier}");
         }
 
-        public IEnumerable<object> GetPendingChanges()
+        public object[] GetPendingChanges()
         {
             _isCommitPending = true;
             Logger.Debug(() => $"Aggregate {AggregateIdentifier} has {_changes.Count} pending changes.");
-            return _changes.AsEnumerable();
+            return _changes.ToArray();
         }
 
         public void Load(IEnumerable<object> events)

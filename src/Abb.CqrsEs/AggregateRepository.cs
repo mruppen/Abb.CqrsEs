@@ -29,7 +29,7 @@ namespace Abb.CqrsEs
             return aggregate;
         }
 
-        public Task Save<T>(T aggregate, int expectedVersion = int.MinValue, CancellationToken cancellationToken = default) where T : AggregateRoot
+        public Task Save<T>(T aggregate, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             if (aggregate == null)
             {
@@ -39,23 +39,17 @@ namespace Abb.CqrsEs
             async Task DoSave()
             {
                 _logger.Debug(() => $"Save events of aggregate {aggregate.AggregateIdentifier}");
-                var actualVersion = await _eventStore.GetVersion(aggregate.Id, cancellationToken);
-                if (expectedVersion != int.MinValue && actualVersion != expectedVersion)
-                {
-                    _logger.Warning(() => $"ExpectedVersion {expectedVersion} does not match actual version {actualVersion} of aggregate  {aggregate.AggregateIdentifier}");
-                    throw new ConcurrencyException($"Expected version and actual version of aggregate {aggregate.AggregateIdentifier} do not match.");
-                }
                 try
                 {
                     var events = aggregate.GetPendingChanges();
-                    _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {events.Count()} pending changes.");
+                    _logger.Debug(() => $"Aggregate {aggregate.AggregateIdentifier} has {events.Length} pending changes.");
                     if (!events.Any())
                     {
                         aggregate.CommitChanges();
                         return;
                     }
 
-                    await _eventStore.SaveAndPublish(new EventStream(aggregate.Id, actualVersion, events.ToArray()), aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
+                    await _eventStore.SaveAndPublish(new EventStream(aggregate.Id, aggregate.Version - events.Length, events.ToArray()), aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
                 }
                 catch (InvalidOperationException)
                 {

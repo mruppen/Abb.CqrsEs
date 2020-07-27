@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace Abb.CqrsEs
+﻿namespace Abb.CqrsEs
 {
     public class EventStream
     {
@@ -13,7 +11,7 @@ namespace Abb.CqrsEs
 
         public string AggregateId { get; }
 
-        public IEnumerable<object> Events { get; }
+        public object[] Events { get; }
 
         public int FromVersion { get; }
     }

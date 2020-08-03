@@ -8,6 +8,6 @@ namespace Abb.CqrsEs
     {
         Task<EventStream> GetEventStream(string aggregateId, int fromVersion, CancellationToken cancellationToken = default);
 
-        Task SaveAndPublish(EventStream eventStream, Action? commit, CancellationToken cancellationToken = default);
+        Task SaveAndPublish(EventStream eventStream, int expectedVersion, Action? commit, CancellationToken cancellationToken = default);
     }
 }

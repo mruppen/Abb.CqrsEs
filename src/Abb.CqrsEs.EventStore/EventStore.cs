@@ -104,7 +104,7 @@ namespace Abb.CqrsEs.EventStore
             return DoGetVersion();
         }
 
-        public Task SaveAndPublish(EventStream eventStream, Action? commit, CancellationToken cancellationToken = default)
+        public Task SaveAndPublish(EventStream eventStream, int expectedVersion, Action? commit, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (eventStream == null)

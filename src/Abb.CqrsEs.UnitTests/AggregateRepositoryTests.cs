@@ -47,7 +47,7 @@ namespace Abb.CqrsEs.UnitTests
 
             var eventStore = new EventStore();
             var repository = new AggregateRepository(eventStore, new AggregateFactory(GetLogger<Aggregate>()), GetLogger<AggregateRepository>());
-            await repository.Save(aggregate);
+            await repository.Save(aggregate, aggregate.Version);
 
             Assert.Equal(0, aggregate.PendingChangesCount);
             Assert.Equal(_numberOfEvents, eventStore.EventStreams.Single(e => e.AggregateId == aggregateId).Events.Count());
@@ -155,17 +155,21 @@ namespace Abb.CqrsEs.UnitTests
                 return AggregateRoot.InitialVersion;
             }
 
-            public Task SaveAndPublish(EventStream eventStream, Action commit, CancellationToken cancellationToken = default)
+            public Task SaveAndPublish(EventStream eventStream, int expectedVersion, Action commit, CancellationToken cancellationToken = default)
             {
                 var currentStream = EventStreams.SingleOrDefault(e => e.AggregateId == eventStream.AggregateId);
                 if (currentStream == null)
                 {
-                    EventStreams.Add(new EventStream(eventStream.AggregateId, 1, eventStream.Events.ToArray()));
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, 0, eventStream.Events.ToArray()));
                 }
                 else
                 {
+                    if (currentStream.FromVersion + currentStream.Events.Length != expectedVersion)
+                    {
+                        throw new InvalidOperationException();
+                    }
                     EventStreams.Remove(currentStream);
-                    EventStreams.Add(new EventStream(eventStream.AggregateId, 1, currentStream.Events.Concat(eventStream.Events).ToArray()));
+                    EventStreams.Add(new EventStream(eventStream.AggregateId, 0, currentStream.Events.Concat(eventStream.Events).ToArray()));
                 }
                 commit();
                 return Task.CompletedTask;

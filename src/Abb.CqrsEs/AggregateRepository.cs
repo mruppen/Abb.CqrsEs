@@ -29,7 +29,7 @@ namespace Abb.CqrsEs
             return aggregate;
         }
 
-        public Task Save<T>(T aggregate, CancellationToken cancellationToken = default) where T : AggregateRoot
+        public Task Save<T>(T aggregate, int expectedVersion, CancellationToken cancellationToken = default) where T : AggregateRoot
         {
             if (aggregate == null)
             {
@@ -49,7 +49,7 @@ namespace Abb.CqrsEs
                         return;
                     }
 
-                    await _eventStore.SaveAndPublish(new EventStream(aggregate.Id, aggregate.Version - events.Length, events.ToArray()), aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
+                    await _eventStore.SaveAndPublish(new EventStream(aggregate.Id, aggregate.Version - events.Length, events.ToArray()), expectedVersion, aggregate.CommitChanges, cancellationToken).ConfigureAwait(false);
                 }
                 catch (InvalidOperationException)
                 {

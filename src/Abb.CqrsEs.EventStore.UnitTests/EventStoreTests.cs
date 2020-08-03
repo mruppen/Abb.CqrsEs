@@ -94,9 +94,9 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var eventStore = new EventStore(persistence, publisher, loggerFactory.CreateLogger<EventStore>());
 
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, 1, new[] { new Event1(), new Event1() });
+            var eventStream = new EventStream(aggregateId, 0, new[] { new Event1(), new Event1() });
 
-            await eventStore.SaveAndPublish(eventStream, () => { }, default);
+            await eventStore.SaveAndPublish(eventStream, 0, () => { }, default);
             eventStore.Dispose();
 
             Assert.Equal(eventStream.Events.Count(), publisher.PublishedEvents.Count);
@@ -114,9 +114,9 @@ namespace Abb.CqrsEs.EventStore.UnitTests
             var eventStore = new EventStore(persistence, publisher, loggerFactory.CreateLogger<EventStore>());
 
             var aggregateId = Guid.NewGuid().ToString();
-            var eventStream = new EventStream(aggregateId, 1, new object[] { new Event1(), new EventFailingToPublish() });
+            var eventStream = new EventStream(aggregateId, 0, new object[] { new Event1(), new EventFailingToPublish() });
 
-            await eventStore.SaveAndPublish(eventStream, () => { }, default);
+            await eventStore.SaveAndPublish(eventStream, 0, () => { }, default);
             eventStore.Dispose();
 
             Assert.Equal(1, publisher.PublishedEvents.Count);
